@@ -1,0 +1,3 @@
+// Package fakeData defines methods used for generating random values like time, int, range, etc...
+// here exists also a package that can be interesting to use : https://github.com/bxcodec/faker
+package fakeData
