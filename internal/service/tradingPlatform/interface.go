@@ -1,5 +1,5 @@
 package tradingPlatform
 
 type Api interface {
-	GetWalletBalance() (amount int, err error)
+	GetWalletBalance() (amount float32, err error)
 }
