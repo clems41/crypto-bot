@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto-bot/internal/domain/trading"
-	"crypto-bot/internal/service/tradingAPI"
+	"crypto-bot/internal/service/tradingPlatform/tradingPlatformMock"
 	"crypto-bot/pkg/logger"
 	"os"
 	"os/signal"
@@ -14,7 +14,7 @@ func main() {
 	stopSignal := make(chan os.Signal, 1)
 	signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, os.Interrupt, os.Kill)
 
-	tradingApi := tradingAPI.New()
+	tradingApi := tradingPlatformMock.New()
 	tradingService := trading.NewService(tradingApi)
 	go func() {
 		err := tradingService.Start()

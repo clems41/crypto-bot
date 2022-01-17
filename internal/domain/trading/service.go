@@ -1,5 +1,9 @@
 package trading
 
+import (
+	"crypto-bot/internal/service/tradingPlatform"
+)
+
 var _ Service = (*service)(nil)
 
 type Service interface {
@@ -8,16 +12,13 @@ type Service interface {
 }
 
 type service struct {
-	cryptoAPI cryptoAPI
+	cryptoAPI tradingPlatform.Api
 }
 
-func NewService(cryptoAPI cryptoAPI) Service {
+func NewService(cryptoAPI tradingPlatform.Api) Service {
 	return &service{
 		cryptoAPI: cryptoAPI,
 	}
-}
-
-type cryptoAPI interface {
 }
 
 func (svc *service) Start() (err error) {
