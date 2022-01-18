@@ -1,16 +1,19 @@
 package tradingPlatformMock
 
 import (
+	"crypto-bot/internal/constant/currencyConst"
+	"crypto-bot/internal/repository/repositoryModel"
 	"crypto-bot/pkg/utils/pathUtils"
 	"encoding/csv"
 	"encoding/json"
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 )
 
 // openDataset1 will open data from btc_17012022_1min.json file
-func openDataset1() (dataset []float64, err error) {
+func openDataset1() (dataset []repositoryModel.Price, err error) {
 	rootPath, err := pathUtils.GetRootProjectPath()
 	if err != nil {
 		return
@@ -34,13 +37,22 @@ func openDataset1() (dataset []float64, err error) {
 		if err != nil {
 			return
 		}
-		dataset = append(dataset, float64(convertedValue))
+
+		// apply fake fees of 0.15% for ask and bid
+		askPrice := convertedValue * fakeFeesInPercent / 100
+		bidPrice := convertedValue * (1 - fakeFeesInPercent/100)
+		dataset = append(dataset, repositoryModel.Price{
+			Date:     time.Unix(int64(data.Ct), 0),
+			Currency: currencyConst.BtcEurPair,
+			AskPrice: askPrice,
+			BidPrice: bidPrice,
+		})
 	}
 	return
 }
 
 // openDataset2 will open data from btc_14012022_1s.csv file
-func openDataset2() (dataset []float64, err error) {
+func openDataset2() (dataset []repositoryModel.Price, err error) {
 	rootPath, err := pathUtils.GetRootProjectPath()
 	if err != nil {
 		return
@@ -62,13 +74,28 @@ func openDataset2() (dataset []float64, err error) {
 		if idx == 0 {
 			continue // first line is column names
 		}
+
+		timestampStr := line[0]
+		var timestamp int64
+		timestamp, err = strconv.ParseInt(timestampStr, 0, 64)
+		if err != nil {
+			return
+		}
+
 		valueStr := line[4]
 		var convertedValue float64
 		convertedValue, err = strconv.ParseFloat(valueStr, 64)
 		if err != nil {
 			return
 		}
-		dataset = append(dataset, float64(convertedValue))
+		askPrice := convertedValue * (1 + fakeFeesInPercent/2/100)
+		bidPrice := convertedValue * (1 - fakeFeesInPercent/2/100)
+		dataset = append(dataset, repositoryModel.Price{
+			Date:     time.Unix(timestamp, 0),
+			Currency: currencyConst.BtcEurPair,
+			AskPrice: askPrice,
+			BidPrice: bidPrice,
+		})
 	}
 	return
 }

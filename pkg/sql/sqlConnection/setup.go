@@ -1,9 +1,9 @@
 package sqlConnection
 
 import (
-	"cine-circle-api/pkg/logger"
-	"cine-circle-api/pkg/utils/envUtils"
-	"cine-circle-api/pkg/utils/sliceUtils"
+	"crypto-bot/pkg/logger"
+	"crypto-bot/pkg/utils/envUtils"
+	"crypto-bot/pkg/utils/sliceUtils"
 	"fmt"
 	"github.com/pkg/errors"
 	"gorm.io/driver/mysql"

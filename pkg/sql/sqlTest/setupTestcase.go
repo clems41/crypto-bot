@@ -1,9 +1,9 @@
 package sqlTest
 
 import (
-	"cine-circle-api/pkg/logger"
-	"cine-circle-api/pkg/sql/sqlConnection"
-	"cine-circle-api/pkg/utils/sliceUtils"
+	"crypto-bot/pkg/logger"
+	"crypto-bot/pkg/sql/sqlConnection"
+	"crypto-bot/pkg/utils/sliceUtils"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 	"testing"

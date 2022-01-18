@@ -25,6 +25,7 @@ type WalletView struct {
 type OpenPositionForm struct {
 	Currency string
 	Amount   float64
+	AskPrice float64
 }
 
 type OpenPositionView struct {

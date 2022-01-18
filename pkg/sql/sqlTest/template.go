@@ -1,8 +1,8 @@
 package sqlTest
 
 import (
-	"cine-circle-api/pkg/sql/sqlConnection"
-	"cine-circle-api/pkg/utils/sliceUtils"
+	"crypto-bot/pkg/sql/sqlConnection"
+	"crypto-bot/pkg/utils/sliceUtils"
 	"fmt"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"

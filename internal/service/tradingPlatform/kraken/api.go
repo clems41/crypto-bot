@@ -76,6 +76,8 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 	}
 	api.openedPositions[positionID] = position
 	api.positions[positionID] = position
+	api.balanceByCurrency[form.Currency] -= form.Amount
+	view = tradingPlatform.OpenPositionView{PositionID: positionID}
 	return
 }
 
@@ -102,6 +104,9 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 
 	// close position
 	delete(api.openedPositions, form.PositionID)
+	view = tradingPlatform.ClosePositionView{
+		Result: profit,
+	}
 	return
 }
 

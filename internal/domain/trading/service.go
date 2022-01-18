@@ -69,10 +69,9 @@ func (svc *service) Stop() (err error) {
 		return
 	}
 	for _, position := range positions.Positions {
-		profit := position.Result - position.Amount
-		percent := profit / position.Amount * 100
-		logger.Infof("Position %s make profit of %0.2f with amount %0.2f (%0.3f%%)", position.ID, profit, position.Amount,
-			percent)
+		percent := position.Result / position.Amount * 100
+		logger.Infof("Position %s make result of %0.4f with amount %0.2f (%0.3f%%)",
+			position.ID, position.Result, position.Amount, percent)
 	}
 
 	// Update current balance
@@ -91,10 +90,10 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 	if err != nil {
 		return
 	}
+	logger.Infof("Current balance is %v", balanceView.BalanceByCurrency)
 
 	// Loop over all currencies to trade
 	for _, currency := range currenciesToTrade {
-		logger.Infof("Current balance is %0.2f for currency %s", balanceView.BalanceByCurrency[currency], currency)
 		// Getting actual price of currency
 		priceForm := tradingPlatform.GetPriceForm{
 			Currency: currency,
@@ -160,7 +159,9 @@ func (svc *service) openNewPositions(actualBalance float64, lastPrices []*reposi
 	}
 
 	if shouldOpen {
+		lastPrice := lastPrices[len(lastPrices)-1]
 		form := tradingPlatform.OpenPositionForm{
+			AskPrice: lastPrice.AskPrice,
 			Currency: currency,
 			Amount:   actualBalance * 3 / 4, // use only 3/4 of available balance
 		}
@@ -174,10 +175,10 @@ func (svc *service) openNewPositions(actualBalance float64, lastPrices []*reposi
 	return
 }
 
-func (svc *service) closePositions(actualPrice float64, openedPositions []tradingPlatform.PositionView) (err error) {
+func (svc *service) closePositions(bidPrice float64, openedPositions []tradingPlatform.PositionView) (err error) {
 	// close position if actual price is more than 0.1% of price position
 	for _, position := range openedPositions {
-		if actualPrice >= gainPercentToClosePosition*position.Price {
+		if bidPrice >= (1+gainToClosePositionInPercent/100)*position.Price {
 			form := tradingPlatform.ClosePositionForm{PositionID: position.ID}
 			_, err = svc.cryptoAPI.ClosePosition(form)
 			if err != nil {

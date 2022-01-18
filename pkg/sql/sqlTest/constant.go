@@ -1,6 +1,6 @@
 package sqlTest
 
-import "cine-circle-api/pkg/sql/sqlConnection"
+import "crypto-bot/pkg/sql/sqlConnection"
 
 const (
 	testingDatabaseNamePrefix  = "testing"
