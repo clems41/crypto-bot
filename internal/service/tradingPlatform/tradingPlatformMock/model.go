@@ -3,14 +3,15 @@ package tradingPlatformMock
 type Position struct {
 	ID           string
 	DatasetIndex int
-	Amount       float32
+	Amount       float64
+	Result       float64
 }
 
-type Dataset struct {
-	Values []ValueDataset `json:"values"`
+type Dataset1 struct {
+	Values []ValueDataset1 `json:"values"`
 }
 
-type ValueDataset struct {
+type ValueDataset1 struct {
 	Ct int    `json:"ct"`
 	Op string `json:"op"`
 	Hp string `json:"hp"`

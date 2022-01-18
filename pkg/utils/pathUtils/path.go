@@ -17,11 +17,7 @@ func GetRootProjectPath() (rootPath string, err error) {
 		return
 	}
 
-	// Get project name or return error
-	projectName, err := envUtils.GetFromEnvOrError(envApplicationName)
-	if err != nil {
-		return
-	}
+	projectName := "crypto-bot"
 
 	// Get current path
 	wd, err := os.Getwd()

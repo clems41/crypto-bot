@@ -2,7 +2,8 @@ package main
 
 import (
 	"crypto-bot/internal/domain/trading"
-	"crypto-bot/internal/service/tradingPlatform/tradingPlatformMock"
+	"crypto-bot/internal/repository/localRepository"
+	"crypto-bot/internal/service/tradingPlatform/kraken"
 	"crypto-bot/pkg/logger"
 	"os"
 	"os/signal"
@@ -14,23 +15,34 @@ func main() {
 	stopSignal := make(chan os.Signal, 1)
 	signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, os.Interrupt, os.Kill)
 
-	tradingApi := tradingPlatformMock.New()
-	tradingService := trading.NewService(tradingApi)
+	// Instantiate useful services and repositories
+	//tradingApi, err := tradingPlatformMock.New()
+	tradingApi, err := kraken.New()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	priceRepo, err := localRepository.NewPriceRepository()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// Run trading algorithm
+	tradingService := trading.NewService(
+		tradingApi,
+		priceRepo)
 	go func() {
-		err := tradingService.Start()
+		err = tradingService.Start()
 		if err != nil {
-			logger.Fatalf("Cannot start crypto bot : %v", err)
-		} else {
-			logger.Infof("Crypto bot is running...")
+			logger.Fatal(err)
 		}
 	}()
 
 	// This code below will be executed only when signal is received (shutdown, cancel, kill, etc...).
 	// Add all closing methods here.
 	<-stopSignal
-	err := tradingService.Stop()
+	err = tradingService.Stop()
 	if err != nil {
-		logger.Fatalf("Cannot stop crypto bot : %v", err)
+		logger.Fatal(err)
 	} else {
 		logger.Infof("Crypto bot has been stopped !")
 	}

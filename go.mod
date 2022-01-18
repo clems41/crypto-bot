@@ -3,6 +3,7 @@ module crypto-bot
 go 1.16
 
 require (
+	github.com/beldur/kraken-go-api-client v0.0.0-20210512194559-2c29669c4ecc // indirect
 	github.com/corpix/uarand v0.1.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/icrowley/fake v0.0.0-20180203215853-4178557ae428 // indirect

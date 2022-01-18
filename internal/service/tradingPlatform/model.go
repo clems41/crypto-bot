@@ -1,12 +1,30 @@
 package tradingPlatform
 
+import "time"
+
+type PositionView struct {
+	ID       string
+	Currency string
+	Amount   float64
+	Price    float64
+	Result   float64
+}
+
+type GetOpenedPositionsView struct {
+	Positions []PositionView
+}
+
+type GetAllPositionsView struct {
+	Positions []PositionView
+}
+
 type WalletView struct {
-	Balance float32
+	BalanceByCurrency map[string]float64
 }
 
 type OpenPositionForm struct {
 	Currency string
-	Amount   float32
+	Amount   float64
 }
 
 type OpenPositionView struct {
@@ -18,7 +36,7 @@ type ClosePositionForm struct {
 }
 
 type ClosePositionView struct {
-	Result float32
+	Result float64
 }
 
 type GetPriceForm struct {
@@ -26,5 +44,7 @@ type GetPriceForm struct {
 }
 
 type GetPriceView struct {
-	Value float32
+	AskPrice float64
+	BidPrice float64
+	Date     time.Time
 }

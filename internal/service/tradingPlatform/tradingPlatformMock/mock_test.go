@@ -33,13 +33,27 @@ func TestMock_GetPrice(t *testing.T) {
 func TestMock_OpenPosition(t *testing.T) {
 	testMock, err := New()
 	require.NoError(t, err)
+	amount := initWalletBalance / 10
 	form := tradingPlatform.OpenPositionForm{
 		Currency: fake.Word(),
-		Amount:   initWalletBalance / 10,
+		Amount:   amount,
 	}
 	view, err := testMock.OpenPosition(form)
 	require.NoError(t, err)
 	require.NotEqual(t, "", view.PositionID)
+
+	// balance should be decreased
+	balanceView, err := testMock.GetWalletBalance()
+	require.NoError(t, err)
+	require.Equal(t, initWalletBalance-amount, balanceView.Balance)
+
+	// position should be opened
+	openedPositions, err := testMock.GetOpenedPositions()
+	require.NoError(t, err)
+	require.Len(t, openedPositions.Positions, 1)
+	positions, err := testMock.GetAllPositions()
+	require.NoError(t, err)
+	require.Len(t, positions.Positions, 1)
 }
 
 func TestMock_ClosePosition(t *testing.T) {
@@ -74,6 +88,71 @@ func TestMock_ClosePosition(t *testing.T) {
 	}
 	view, err = testMock.ClosePosition(form)
 	require.NoError(t, err) // should not return error because position exists
-	require.NotEqual(t, float32(0), view.Result)
+	require.NotEqual(t, float64(0), view.Result)
 	require.NotEqual(t, openForm.Amount, view.Result)
+
+	// balance should not the same as start
+	require.NoError(t, err)
+	wallet, err := testMock.GetWalletBalance()
+	require.NotEqual(t, initWalletBalance, wallet.Balance)
+
+	// position should not be opened
+	openedPositions, err := testMock.GetOpenedPositions()
+	require.NoError(t, err)
+	require.Len(t, openedPositions.Positions, 0)
+	positions, err := testMock.GetAllPositions()
+	require.NoError(t, err)
+	require.Len(t, positions.Positions, 1)
+}
+
+func TestMock_GetOpenedPositions(t *testing.T) {
+	testMock, err := New()
+	require.NoError(t, err)
+	view, err := testMock.GetOpenedPositions()
+	require.NoError(t, err)
+	require.Len(t, view.Positions, 0)
+
+	// try to open positions and check returned values
+	var positions []tradingPlatform.OpenPositionView
+	for range fakeData.FakeRange(5, 20) {
+		var position tradingPlatform.OpenPositionView
+		position, err = testMock.OpenPosition(tradingPlatform.OpenPositionForm{
+			Currency: fake.Word(),
+			Amount:   10,
+		})
+		require.NoError(t, err)
+		positions = append(positions, position)
+	}
+
+	// try again with created positions
+	view, err = testMock.GetOpenedPositions()
+	require.NoError(t, err)
+	require.Len(t, view.Positions, len(positions))
+}
+
+func TestMock_GetAllPositions(t *testing.T) {
+	testMock, err := New()
+	require.NoError(t, err)
+	view, err := testMock.GetAllPositions()
+	require.NoError(t, err)
+	require.Len(t, view.Positions, 0)
+
+	// try to open and close positions and check returned values
+	var positions []tradingPlatform.OpenPositionView
+	for range fakeData.FakeRange(5, 20) {
+		var position tradingPlatform.OpenPositionView
+		position, err = testMock.OpenPosition(tradingPlatform.OpenPositionForm{
+			Currency: fake.Word(),
+			Amount:   10,
+		})
+		require.NoError(t, err)
+		positions = append(positions, position)
+		_, err = testMock.ClosePosition(tradingPlatform.ClosePositionForm{PositionID: position.PositionID})
+		require.NoError(t, err)
+	}
+
+	// try again with created positions
+	view, err = testMock.GetAllPositions()
+	require.NoError(t, err)
+	require.Len(t, view.Positions, len(positions))
 }
