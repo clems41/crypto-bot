@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	apiSecret = "Jk9pEPFgt91kPyNs0ZSYvoObcD6iGEzsUhbzCXksetc+hXjIMMnr3eyYMq0SK4/OOSmENeJHMMnHug9/FmaBEA=="
-	apiKey    = "4TBOIwtlVtOLPWBGOzzcao2tOheSXDwRu3ihZ2o73Fdhap+6oYirTM9d"
+	envKrakenApiSecret = "KRAKEN_API_SECRET"
+	envKrakenApiKey    = "KRAKEN_API_KEY"
 )
 
 const (

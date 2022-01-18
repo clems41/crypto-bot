@@ -3,6 +3,7 @@ package kraken
 import (
 	"crypto-bot/internal/constant/currencyConst"
 	"crypto-bot/internal/service/tradingPlatform"
+	"crypto-bot/pkg/utils/envUtils"
 	krakenapi "github.com/beldur/kraken-go-api-client"
 	"github.com/google/uuid"
 	"strconv"
@@ -12,13 +13,26 @@ import (
 var _ tradingPlatform.Api = (*api)(nil)
 
 type api struct {
+	apiKey            string
+	apiSecret         string
 	balanceByCurrency map[string]float64
 	openedPositions   map[string]tradingPlatform.PositionView
 	positions         map[string]tradingPlatform.PositionView
 }
 
 func New() (*api, error) {
+	apiKey, err := envUtils.GetFromEnvOrError(envKrakenApiKey)
+	if err != nil {
+		return nil, err
+	}
+	apiSecret, err := envUtils.GetFromEnvOrError(envKrakenApiSecret)
+	if err != nil {
+		return nil, err
+	}
+
 	return &api{
+		apiKey:    apiKey,
+		apiSecret: apiSecret,
 		balanceByCurrency: map[string]float64{
 			currencyConst.BtcEurPair: initBalance,
 		},
@@ -97,7 +111,7 @@ func (api *api) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatfor
 	if !ok {
 		return view, errCurrencyNotFound
 	}
-	krakenApi := krakenapi.New(apiKey, apiSecret)
+	krakenApi := krakenapi.New(api.apiKey, api.apiSecret)
 	result, err := krakenApi.Ticker(krakenPair)
 	if err != nil {
 		return
