@@ -4,6 +4,7 @@ import (
 	"crypto-bot/internal/constant/currencyConst"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/envUtils"
+	"crypto-bot/pkg/utils/tradingUtils"
 	krakenapi "github.com/beldur/kraken-go-api-client"
 	"github.com/google/uuid"
 	"strconv"
@@ -72,7 +73,7 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 		ID:       positionID,
 		Amount:   form.Amount,
 		Currency: form.Currency,
-		Price:    priceView.AskPrice,
+		AskPrice: priceView.AskPrice,
 	}
 	api.openedPositions[positionID] = position
 	api.positions[positionID] = position
@@ -95,17 +96,21 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 	}
 
 	// calculate profit
-	diff := position.Price - priceView.BidPrice
-	profit := diff / position.Price * position.Amount
+	askPrice := position.AskPrice
+	bidPrice := priceView.BidPrice
+	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
+	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
+	api.balanceByCurrency[position.Currency] += profit
 
 	// store position result
-	position.Result = profit
+	position.Result = result
+	position.BidPrice = priceView.BidPrice
 	api.positions[position.ID] = position
 
 	// close position
 	delete(api.openedPositions, form.PositionID)
 	view = tradingPlatform.ClosePositionView{
-		Result: profit,
+		Result: result,
 	}
 	return
 }

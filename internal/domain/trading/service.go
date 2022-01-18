@@ -5,6 +5,7 @@ import (
 	"crypto-bot/internal/repository/repositoryModel"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/logger"
+	"crypto-bot/pkg/utils/tradingUtils"
 	"time"
 )
 
@@ -69,9 +70,9 @@ func (svc *service) Stop() (err error) {
 		return
 	}
 	for _, position := range positions.Positions {
-		percent := position.Result / position.Amount * 100
-		logger.Infof("Position %s make result of %0.4f with amount %0.2f (%0.3f%%)",
-			position.ID, position.Result, position.Amount, percent)
+		logger.Infof("Position %s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
+			position.ID, position.AskPrice, position.BidPrice, position.Result, position.Amount,
+			tradingUtils.GetResultInPercent(position.Amount, position.Result))
 	}
 
 	// Update current balance
@@ -178,12 +179,16 @@ func (svc *service) openNewPositions(actualBalance float64, lastPrices []*reposi
 func (svc *service) closePositions(bidPrice float64, openedPositions []tradingPlatform.PositionView) (err error) {
 	// close position if actual price is more than 0.1% of price position
 	for _, position := range openedPositions {
-		if bidPrice >= (1+gainToClosePositionInPercent/100)*position.Price {
+		if bidPrice >= (1+gainToClosePositionInPercent/100)*position.AskPrice {
 			form := tradingPlatform.ClosePositionForm{PositionID: position.ID}
-			_, err = svc.cryptoAPI.ClosePosition(form)
+			var view tradingPlatform.ClosePositionView
+			view, err = svc.cryptoAPI.ClosePosition(form)
 			if err != nil {
 				return
 			}
+			logger.Infof("Closing position %s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
+				position.ID, position.AskPrice, bidPrice, view.Result, position.Amount,
+				tradingUtils.GetResultInPercent(position.Amount, view.Result))
 		}
 	}
 	return

@@ -5,6 +5,7 @@ import (
 	"crypto-bot/internal/repository/repositoryModel"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/testUtils/fakeData"
+	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
 )
 
@@ -19,7 +20,11 @@ type mock struct {
 }
 
 func New() (*mock, error) {
-	dataset, err := openDataset2()
+	openDatasetMethod, ok := openDataset[datasetIDToUse]
+	if !ok {
+		return nil, errDatasetNotFound
+	}
+	dataset, err := openDatasetMethod()
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +54,7 @@ func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view trad
 		ID:       positionID,
 		Currency: form.Currency,
 		Amount:   form.Amount,
-		Price:    form.AskPrice,
+		AskPrice: form.AskPrice,
 	}
 
 	// adding position in fake platform
@@ -72,11 +77,12 @@ func (mock *mock) ClosePosition(form tradingPlatform.ClosePositionForm) (view tr
 	}
 
 	// calculate profit
-	askPrice := position.Price
+	askPrice := position.AskPrice
 	bidPrice := mock.dataset[mock.actualDatasetIndex].BidPrice
-	profit := bidPrice * position.Amount / askPrice
-	result := profit - position.Amount
+	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
+	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
 	position.Result = result
+	position.BidPrice = bidPrice
 
 	// increase balance
 	mock.balanceByCurrency[position.Currency] += profit
@@ -111,10 +117,12 @@ func (mock *mock) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatf
 func (mock *mock) GetOpenedPositions() (view tradingPlatform.GetOpenedPositionsView, err error) {
 	for _, position := range mock.openedPositions {
 		view.Positions = append(view.Positions, tradingPlatform.PositionView{
-			ID:     position.ID,
-			Amount: position.Amount,
-			Price:  position.Price,
-			Result: position.Result,
+			ID:       position.ID,
+			Currency: position.Currency,
+			Amount:   position.Amount,
+			AskPrice: position.AskPrice,
+			BidPrice: position.BidPrice,
+			Result:   position.Result,
 		})
 	}
 	return
@@ -123,10 +131,12 @@ func (mock *mock) GetOpenedPositions() (view tradingPlatform.GetOpenedPositionsV
 func (mock *mock) GetAllPositions() (view tradingPlatform.GetAllPositionsView, err error) {
 	for _, position := range mock.positions {
 		view.Positions = append(view.Positions, tradingPlatform.PositionView{
-			ID:     position.ID,
-			Amount: position.Amount,
-			Price:  position.Price,
-			Result: position.Result,
+			ID:       position.ID,
+			Currency: position.Currency,
+			Amount:   position.Amount,
+			AskPrice: position.AskPrice,
+			BidPrice: position.BidPrice,
+			Result:   position.Result,
 		})
 	}
 	return
