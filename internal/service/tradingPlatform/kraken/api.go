@@ -17,7 +17,6 @@ type api struct {
 	apiKey            string
 	apiSecret         string
 	balanceByCurrency map[string]float64
-	openedPositions   map[string]tradingPlatform.PositionView
 	positions         map[string]tradingPlatform.PositionView
 }
 
@@ -37,8 +36,7 @@ func New() (*api, error) {
 		balanceByCurrency: map[string]float64{
 			tradingConst.EuroCurrency: initBalance,
 		},
-		openedPositions: make(map[string]tradingPlatform.PositionView),
-		positions:       make(map[string]tradingPlatform.PositionView),
+		positions: make(map[string]tradingPlatform.PositionView),
 	}, nil
 }
 
@@ -47,8 +45,10 @@ func (api *api) Name() (name string) {
 }
 
 func (api *api) GetOpenedPositions() (view tradingPlatform.GetOpenedPositionsView, err error) {
-	for _, position := range api.openedPositions {
-		view.Positions = append(view.Positions, position)
+	for _, position := range api.positions {
+		if !position.Closed {
+			view.Positions = append(view.Positions, position)
+		}
 	}
 	return
 }
@@ -93,10 +93,10 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 		Amount:   form.Amount * (1 - fakeFeesInPercent/100), // trading platform always keep little percent of invest
 		Pair:     form.Pair,
 		AskPrice: price.AskPrice,
+		Closed:   false,
 	}
 
 	// Push order
-	api.openedPositions[positionID] = position
 	api.positions[positionID] = position
 
 	// Update wallet balance
@@ -107,7 +107,7 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 
 func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view tradingPlatform.ClosePositionView, err error) {
 	// Get bid price
-	position, ok := api.openedPositions[form.PositionID]
+	position, ok := api.positions[form.PositionID]
 	if !ok {
 		return view, tradingPlatform.ErrPositionNotFound
 	}
@@ -127,15 +127,20 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 	bidPrice := price.BidPrice
 	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
 	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
-	api.balanceByCurrency[position.Pair] += profit
+	currency := tradingConst.CurrencyNeededToTradePair(position.Pair)
+	balance, ok := api.balanceByCurrency[currency]
+	if !ok {
+		return view, tradingPlatform.ErrCurrencyNotInWallet
+	}
+	api.balanceByCurrency[currency] = balance + profit
 
 	// store position result
 	position.Result = result
 	position.BidPrice = bidPrice
+	position.Closed = true
 	api.positions[position.ID] = position
 
-	// close position
-	delete(api.openedPositions, form.PositionID)
+	// fill view
 	view = tradingPlatform.ClosePositionView{
 		AskPrice: askPrice,
 		BidPrice: bidPrice,

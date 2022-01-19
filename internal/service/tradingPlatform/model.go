@@ -27,6 +27,7 @@ type PositionView struct {
 	AskPrice float64
 	BidPrice float64
 	Result   float64
+	Closed   bool
 }
 
 type WalletView struct {

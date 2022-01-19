@@ -98,11 +98,11 @@ func (svc *service) Stop() (err error) {
 		// Calculate estimated profit
 		var initialBalance, finalBalance float64
 		for currency, balance := range walletView.BalanceByCurrency {
-			initialBalancePair, ok := svc.initialBalance[currency]
+			initialBalanceCurrency, ok := svc.initialBalance[currency]
 			if !ok {
 				return errCurrencyNotInBalance
 			}
-			initialBalance += initialBalancePair
+			initialBalance += initialBalanceCurrency
 			finalBalance += balance
 		}
 		oneDayProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 24*time.Hour)
