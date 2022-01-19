@@ -19,7 +19,7 @@ type Service interface {
 	applyTradingAlgorithm() (err error)
 	updateWallet(platformName string) (err error)
 	updatePrices() (err error)
-	shouldOpenNewPosition() (shouldOpen bool, err error)
+	shouldOpenNewPosition(platformName string, pair string) (shouldOpen bool, err error)
 	shouldClosePosition(position Position) (shouldClose bool, err error)
 	getAmountToInvest(platformName string, pair string) (amount float64, err error)
 	getAskPrice(platformName string, pair string) (askPrice float64, err error)
@@ -163,7 +163,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 			// open new position if conditions are ok
 			var shouldOpenPosition bool
-			shouldOpenPosition, err = svc.shouldOpenNewPosition()
+			shouldOpenPosition, err = svc.shouldOpenNewPosition(platform.Name(), pair)
 			if err != nil {
 				return
 			}
@@ -173,23 +173,25 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				if err != nil {
 					return
 				}
-				var askPrice float64
-				askPrice, err = svc.getAskPrice(platform.Name(), pair)
-				if err != nil {
-					return
+				if amount >= minimumAmountToOpenPosition {
+					var askPrice float64
+					askPrice, err = svc.getAskPrice(platform.Name(), pair)
+					if err != nil {
+						return
+					}
+					openForm := tradingPlatform.OpenPositionForm{
+						Pair:     pair,
+						Amount:   amount,
+						AskPrice: askPrice,
+					}
+					var openView tradingPlatform.OpenPositionView
+					openView, err = platform.OpenPosition(openForm)
+					if err != nil {
+						return
+					}
+					logger.Infof("Opening new position %s for pair %s with ask=%0.2f and amount=%0.2f",
+						openView.PositionID, openForm.Pair, openForm.AskPrice, openForm.Amount)
 				}
-				openForm := tradingPlatform.OpenPositionForm{
-					Pair:     pair,
-					Amount:   amount,
-					AskPrice: askPrice,
-				}
-				var openView tradingPlatform.OpenPositionView
-				openView, err = platform.OpenPosition(openForm)
-				if err != nil {
-					return
-				}
-				logger.Infof("Opening new position %s for pair %s with ask=%0.2f and amount=%0.2f",
-					openView.PositionID, openForm.Pair, openForm.AskPrice, openForm.Amount)
 			}
 
 			// close positions if condition are ok
@@ -223,11 +225,37 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 	return
 }
 
-func (svc *service) shouldOpenNewPosition() (shouldOpen bool, err error) {
+func (svc *service) shouldOpenNewPosition(platformName string, pair string) (shouldOpen bool, err error) {
+	// Getting last prices for current pair
+	lastPrices, err := svc.priceRepo.GetLast(platformName, nbPricesToCompare, pair)
+	if err != nil {
+		return
+	}
+	if len(lastPrices) < nbPricesToCompare {
+		return false, errPriceNotFound
+	}
+
+	// Find minimum value from last prices
+	minimumPrice := lastPrices[0].AskPrice
+	for _, price := range lastPrices {
+		if price.AskPrice < minimumPrice {
+			minimumPrice = price.AskPrice
+		}
+	}
+
+	// Position should be opened if last price is the lowest of all last 10 prices
+	lastPrice := lastPrices[len(lastPrices)-1]
+	if minimumPrice == lastPrice.AskPrice {
+		shouldOpen = true
+	}
 	return
 }
 
 func (svc *service) shouldClosePosition(position Position) (shouldClose bool, err error) {
+	estimatedResultInPercent := tradingUtils.GetResultInPercent(position.AskPrice, position.BidPrice, position.Amount)
+	if estimatedResultInPercent >= minimumResultToClosePositionInPercent {
+		shouldClose = true
+	}
 	return
 }
 
