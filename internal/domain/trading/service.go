@@ -17,22 +17,27 @@ type Service interface {
 }
 
 type service struct {
-	quitChannel     chan bool           // quit goroutine when program exit
-	cryptoAPI       tradingPlatform.Api // communicate with trading platform
-	priceRepository repository.Price    // use to store and get previous prices
+	quitChannel                  chan bool           // quit goroutine when program exit
+	cryptoAPI                    tradingPlatform.Api // communicate with trading platform
+	priceRepository              repository.Price    // use to store and get previous prices
+	startTime                    time.Time           // datetime when lago has been started
+	initialBalance               map[string]float64  // initial balance before running algo for each pair
+	openedPositionIdsByTimestamp map[int64]string    // use to know if position has been opened on specific timestamp
 }
 
 func NewService(cryptoAPI tradingPlatform.Api, priceRepo repository.Price) Service {
 	return &service{
-		cryptoAPI:       cryptoAPI,
-		quitChannel:     make(chan bool),
-		priceRepository: priceRepo,
+		quitChannel:                  make(chan bool),
+		cryptoAPI:                    cryptoAPI,
+		priceRepository:              priceRepo,
+		openedPositionIdsByTimestamp: make(map[int64]string),
 	}
 }
 
 // Start will run trading algorithm.
 // This method must be called in goroutine that will be stopped by Stop method.
 func (svc *service) Start() (err error) {
+	svc.startTime = time.Now()
 	for range time.Tick(delayBeforeNewAlgoApplicationInMilliseconds * time.Millisecond) { // Loop
 		select {
 		case <-svc.quitChannel:
@@ -70,56 +75,76 @@ func (svc *service) Stop() (err error) {
 		return
 	}
 	for _, position := range positions.Positions {
-		logger.Infof("Position %s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
-			position.ID, position.AskPrice, position.BidPrice, position.Result, position.Amount,
-			tradingUtils.GetResultInPercent(position.Amount, position.Result))
+		logger.Infof("Position %s pair=%s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
+			position.ID, position.Pair, position.AskPrice, position.BidPrice, position.Result, position.Amount,
+			tradingUtils.GetResultInPercent(position.AskPrice, position.BidPrice, position.Amount))
 	}
 
 	// Update current balance
+	endTime := time.Now()
+	tradingDuration := endTime.Sub(svc.startTime)
 	balanceView, err := svc.cryptoAPI.GetWalletBalance()
 	if err != nil {
 		return
 	}
-	logger.Infof("Current balance is now of %v", balanceView.BalanceByCurrency)
+	logger.Infof("Current balance is now of %v after %v of trading", balanceView.BalanceByCurrency, tradingDuration)
 
+	// Calculate estimated profit
+	for _, pair := range pairsToTrade {
+		initialBalance := svc.initialBalance[pair]
+		finalBalance := balanceView.BalanceByCurrency[pair]
+		oneDayProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 24*time.Hour)
+		oneMonthProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 30*24*time.Hour)
+		oneYearProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 365*24*time.Hour)
+		logger.Infof("For pair %s, profit for one day would be %0.2f, for one month %0.2f and for one year %0.2f",
+			pair, oneDayProfit, oneMonthProfit, oneYearProfit)
+	}
 	return
 }
 
 func (svc *service) applyTradingAlgorithm() (err error) {
+	logger.Infof("-------------------------------------------------")
 	// Update current balance
 	balanceView, err := svc.cryptoAPI.GetWalletBalance()
 	if err != nil {
 		return
 	}
 	logger.Infof("Current balance is %v", balanceView.BalanceByCurrency)
+	if svc.initialBalance == nil { // if not init, it means it's the first run, so update it
+		svc.initialBalance = make(map[string]float64)
+		svc.initialBalance = balanceView.BalanceByCurrency
+	}
 
-	// Loop over all currencies to trade
-	for _, currency := range currenciesToTrade {
-		// Getting actual price of currency
-		priceForm := tradingPlatform.GetPriceForm{
-			Currency: currency,
+	// Getting actual price of pair
+	priceForm := tradingPlatform.GetPriceForm{
+		Pairs: pairsToTrade,
+	}
+	var priceView tradingPlatform.GetPriceView
+	priceView, err = svc.cryptoAPI.GetPrice(priceForm)
+	if err != nil {
+		return
+	}
+
+	// Store new prices
+	for pair, price := range priceView.PriceByPair {
+		priceModel := repositoryModel.Price{
+			Date:     price.Date,
+			Pair:     pair,
+			AskPrice: price.AskPrice,
+			BidPrice: price.BidPrice,
 		}
-		var priceView tradingPlatform.GetPriceView
-		priceView, err = svc.cryptoAPI.GetPrice(priceForm)
+		err = svc.priceRepository.Store(&priceModel)
 		if err != nil {
 			return
 		}
-		logger.Infof("%s price is ask=%0.2f and bid=%0.2f", currency, priceView.AskPrice, priceView.BidPrice)
+		logger.Infof("%s price is ask=%0.2f and bid=%0.2f", pair, price.AskPrice, price.BidPrice)
+	}
 
-		// Store new price
-		price := repositoryModel.Price{
-			Date:     priceView.Date,
-			Currency: currency,
-			AskPrice: priceView.AskPrice,
-			BidPrice: priceView.BidPrice,
-		}
-		err = svc.priceRepository.Store(&price)
-
-		// Get last prices
-		var lastPrices []*repositoryModel.Price
-		lastPrices, err = svc.priceRepository.GetLast(nbPreviousValues, currency)
-		if err != nil {
-			return
+	// Loop over all pairs to trade
+	for _, pair := range pairsToTrade {
+		price, ok := priceView.PriceByPair[pair]
+		if !ok {
+			return errPairNotFound
 		}
 
 		// Get opened positions
@@ -130,48 +155,54 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 		}
 
 		// Open and close positions depending on new prices and previous positions
+		actualBalance, ok := balanceView.BalanceByCurrency[pair]
+		if !ok {
+			return errCurrencyNotInBalance
+		}
 		if len(openedPositions.Positions) >= maxOpenedPositions {
 			logger.Infof("No new position will be opened because max %d has been reached", maxOpenedPositions)
-		} else {
-			err = svc.openNewPositions(balanceView.BalanceByCurrency[currency], lastPrices, currency)
+		} else if actualBalance > 0 {
+			err = svc.openNewPositions(actualBalance, pair)
 			if err != nil {
 				return
 			}
 		}
 
-		err = svc.closePositions(priceView.BidPrice, openedPositions.Positions)
+		err = svc.closePositions(price.BidPrice, openedPositions.Positions)
 		if err != nil {
 			return
 		}
 	}
-
 	return
 }
 
-func (svc *service) openNewPositions(actualBalance float64, lastPrices []*repositoryModel.Price, currency string) (err error) {
-	// if nbOfIncreasingValueToOpenPosition last values are all increasing, we should open new position
-	shouldOpen := true
-	for i := nbPreviousValues - nbOfIncreasingValueToOpenPosition; i < nbPreviousValues; i++ {
-		previous := lastPrices[i-1].AskPrice
-		actual := lastPrices[i].AskPrice
-		if previous > actual {
-			shouldOpen = false
-		}
+func (svc *service) openNewPositions(actualBalance float64, pair string) (err error) {
+	// Get last prices
+	var lastPrices []*repositoryModel.Price
+	lastPrices, err = svc.priceRepository.GetLast(nbOfIncreasingValueToOpenPosition+1, pair)
+	if err != nil {
+		return
 	}
 
-	if shouldOpen {
+	shouldOpenPosition, err := svc.shouldOpenPosition(actualBalance, lastPrices)
+	if err != nil {
+		return
+	}
+
+	if shouldOpenPosition {
 		lastPrice := lastPrices[len(lastPrices)-1]
 		form := tradingPlatform.OpenPositionForm{
 			AskPrice: lastPrice.AskPrice,
-			Currency: currency,
-			Amount:   actualBalance * 3 / 4, // use only 3/4 of available balance
+			Pair:     pair,
+			Amount:   actualBalance * balanceRatioToInvest,
 		}
 		var view tradingPlatform.OpenPositionView
 		view, err = svc.cryptoAPI.OpenPosition(form)
-		logger.Infof("Opening new position %s with amount of %f", view.PositionID, form.Amount)
 		if err != nil {
 			return
 		}
+		logger.Infof("Opening new position %s with amount of %f for pair %s", view.PositionID, form.Amount, pair)
+		svc.openedPositionIdsByTimestamp[lastPrice.Date.Unix()] = view.PositionID
 	}
 	return
 }
@@ -179,16 +210,46 @@ func (svc *service) openNewPositions(actualBalance float64, lastPrices []*reposi
 func (svc *service) closePositions(bidPrice float64, openedPositions []tradingPlatform.PositionView) (err error) {
 	// close position if actual price is more than 0.1% of price position
 	for _, position := range openedPositions {
-		if bidPrice >= (1+gainToClosePositionInPercent/100)*position.AskPrice {
+		resultInPercent := tradingUtils.GetResultInPercent(position.AskPrice, bidPrice, position.Amount)
+		if resultInPercent > resultToClosePositionInPercent {
 			form := tradingPlatform.ClosePositionForm{PositionID: position.ID}
 			var view tradingPlatform.ClosePositionView
 			view, err = svc.cryptoAPI.ClosePosition(form)
 			if err != nil {
 				return
 			}
-			logger.Infof("Closing position %s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
-				position.ID, position.AskPrice, bidPrice, view.Result, position.Amount,
-				tradingUtils.GetResultInPercent(position.Amount, view.Result))
+			logger.Infof("Closing position %s for pair %s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
+				position.ID, position.Pair, position.AskPrice, bidPrice, view.Result, position.Amount, resultInPercent)
+		}
+	}
+	return
+}
+
+func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repositoryModel.Price) (shouldOpen bool, err error) {
+	// Don't open if not enough in balance
+	if actualBalance == 0 {
+		shouldOpen = false
+		return
+	}
+	if actualBalance*balanceRatioToInvest < minimumToOpenPosition {
+		shouldOpen = false
+		return
+	}
+
+	// don't open if position has been already opened using one of this prices
+	shouldOpen = true
+	for i := 1; i < nbOfIncreasingValueToOpenPosition+1; i++ {
+		previous := lastPrices[i-1].AskPrice
+		actual := lastPrices[i].AskPrice
+		if actual < previous {
+			shouldOpen = false
+			return
+		}
+		positionID, ok := svc.openedPositionIdsByTimestamp[lastPrices[i].Date.Unix()]
+		if ok {
+			logger.Infof("New position cannot be opened because older one %s has already be opened using this price", positionID)
+			shouldOpen = false
+			return
 		}
 	}
 	return

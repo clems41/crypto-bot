@@ -2,8 +2,9 @@ package currencyConst
 
 /* Currencies */
 
-/* Pair */
+/* Pairs */
 
 const (
-	BtcEurPair = "BTC_EUR"
+	BtcEurPair  = "BTC_EUR"
+	DashEurPair = "DASH_EUR"
 )

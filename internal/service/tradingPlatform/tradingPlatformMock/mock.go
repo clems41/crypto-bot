@@ -52,7 +52,7 @@ func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view trad
 	positionID := fakeData.UuidWithOnlyAlphaNumeric()
 	position := tradingPlatform.PositionView{
 		ID:       positionID,
-		Currency: form.Currency,
+		Pair:     form.Pair,
 		Amount:   form.Amount,
 		AskPrice: form.AskPrice,
 	}
@@ -62,7 +62,11 @@ func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view trad
 	mock.openedPositions[positionID] = position
 
 	// decrease balance
-	mock.balanceByCurrency[form.Currency] -= form.Amount
+	balance, ok := mock.balanceByCurrency[form.Pair]
+	if !ok {
+		return view, tradingPlatform.ErrPairNotFound
+	}
+	mock.balanceByCurrency[form.Pair] = balance - form.Amount
 
 	// fill view
 	view = tradingPlatform.OpenPositionView{PositionID: positionID}
@@ -85,7 +89,7 @@ func (mock *mock) ClosePosition(form tradingPlatform.ClosePositionForm) (view tr
 	position.BidPrice = bidPrice
 
 	// increase balance
-	mock.balanceByCurrency[position.Currency] += profit
+	mock.balanceByCurrency[position.Pair] += profit
 
 	// store position with result
 	mock.positions[position.ID] = position
@@ -102,10 +106,13 @@ func (mock *mock) ClosePosition(form tradingPlatform.ClosePositionForm) (view tr
 
 func (mock *mock) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatform.GetPriceView, err error) {
 	price := mock.dataset[mock.actualDatasetIndex]
-	view = tradingPlatform.GetPriceView{
-		AskPrice: price.AskPrice,
-		BidPrice: price.BidPrice,
-		Date:     price.Date,
+	view.PriceByPair = make(map[string]tradingPlatform.PriceView)
+	for _, pair := range form.Pairs {
+		view.PriceByPair[pair] = tradingPlatform.PriceView{
+			AskPrice: price.AskPrice,
+			BidPrice: price.BidPrice,
+			Date:     price.Date,
+		}
 	}
 	mock.actualDatasetIndex++
 	if mock.actualDatasetIndex >= len(mock.dataset) {
@@ -118,7 +125,7 @@ func (mock *mock) GetOpenedPositions() (view tradingPlatform.GetOpenedPositionsV
 	for _, position := range mock.openedPositions {
 		view.Positions = append(view.Positions, tradingPlatform.PositionView{
 			ID:       position.ID,
-			Currency: position.Currency,
+			Pair:     position.Pair,
 			Amount:   position.Amount,
 			AskPrice: position.AskPrice,
 			BidPrice: position.BidPrice,
@@ -132,7 +139,7 @@ func (mock *mock) GetAllPositions() (view tradingPlatform.GetAllPositionsView, e
 	for _, position := range mock.positions {
 		view.Positions = append(view.Positions, tradingPlatform.PositionView{
 			ID:       position.ID,
-			Currency: position.Currency,
+			Pair:     position.Pair,
 			Amount:   position.Amount,
 			AskPrice: position.AskPrice,
 			BidPrice: position.BidPrice,

@@ -5,7 +5,7 @@ import "time"
 /* Form */
 
 type OpenPositionForm struct {
-	Currency string
+	Pair     string
 	Amount   float64
 	AskPrice float64
 }
@@ -15,14 +15,14 @@ type ClosePositionForm struct {
 }
 
 type GetPriceForm struct {
-	Currency string
+	Pairs []string
 }
 
 /* View */
 
 type PositionView struct {
 	ID       string
-	Currency string
+	Pair     string
 	Amount   float64
 	AskPrice float64
 	BidPrice float64
@@ -49,8 +49,12 @@ type ClosePositionView struct {
 	Result float64
 }
 
-type GetPriceView struct {
+type PriceView struct {
 	AskPrice float64
 	BidPrice float64
 	Date     time.Time
+}
+
+type GetPriceView struct {
+	PriceByPair map[string]PriceView // price by pair
 }

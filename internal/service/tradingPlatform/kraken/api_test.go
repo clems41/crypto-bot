@@ -24,28 +24,31 @@ func TestApi_GetOpenedPositions(t *testing.T) {
 func TestApi_GetPrice(t *testing.T) {
 	apiTest, err := New()
 	require.NoError(t, err)
+	pair := currencyConst.BtcEurPair
 
-	// try with non-existing currency, should return error
+	// try with non-existing pair, should return error
 	form := tradingPlatform.GetPriceForm{
-		Currency: fake.Word(),
+		Pairs: []string{fake.Word()},
 	}
 	view, err := apiTest.GetPrice(form)
 	require.Error(t, err)
 
-	// try with existing currency, should be ok
+	// try with existing pair, should be ok
 	form = tradingPlatform.GetPriceForm{
-		Currency: currencyConst.BtcEurPair,
+		Pairs: []string{pair},
 	}
 	view, err = apiTest.GetPrice(form)
 	require.NoError(t, err)
 
 	// check view
-	require.True(t, view.BidPrice > 10000 && view.BidPrice < 70000,
-		"Bitcoin bid price should be between 10 000 and 70 000 / unit but it is %0.2f", view.BidPrice)
-	require.True(t, view.AskPrice > 10000 && view.AskPrice < 70000,
-		"Bitcoin ask price should be between 10 000 and 70 000 / unit but it is %0.2f", view.AskPrice)
-	require.True(t, view.Date.Before(time.Now()) && view.Date.After(time.Now().AddDate(0, 0, -1)),
-		"Date price should be between yesterday and now but it is %s", view.Date.String())
+	price, ok := view.PriceByPair[pair]
+	require.True(t, ok)
+	require.True(t, price.BidPrice > 10000 && price.BidPrice < 70000,
+		"Bitcoin bid price should be between 10 000 and 70 000 / unit but it is %0.2f", price.BidPrice)
+	require.True(t, price.AskPrice > 10000 && price.AskPrice < 70000,
+		"Bitcoin ask price should be between 10 000 and 70 000 / unit but it is %0.2f", price.AskPrice)
+	require.True(t, price.Date.Before(time.Now()) && price.Date.After(time.Now().AddDate(0, 0, -1)),
+		"Date price should be between yesterday and now but it is %s", price.Date.String())
 }
 
 func TestApi_GetWalletBalance(t *testing.T) {

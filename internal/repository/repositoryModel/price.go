@@ -4,7 +4,7 @@ import "time"
 
 type Price struct {
 	Date     time.Time
-	Currency string
+	Pair     string
 	AskPrice float64
 	BidPrice float64
 }

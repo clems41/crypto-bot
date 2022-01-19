@@ -11,11 +11,13 @@ const (
 )
 
 const (
-	initBalance = float64(100.0)
+	initBalance       = float64(100.0)
+	fakeFeesInPercent = 0.1
 )
 
 var (
-	currencyConversion = map[string]string{
-		currencyConst.BtcEurPair: krakenapi.XXBTZEUR,
+	pairConversion = map[string]string{
+		currencyConst.BtcEurPair:  krakenapi.XXBTZEUR,
+		currencyConst.DashEurPair: krakenapi.DASHEUR,
 	}
 )

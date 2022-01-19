@@ -1,6 +1,7 @@
 package tradingPlatformMock
 
 import (
+	"crypto-bot/internal/constant/currencyConst"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/testUtils/fakeData"
 	"github.com/icrowley/fake"
@@ -13,20 +14,26 @@ func TestMock_GetWalletBalance(t *testing.T) {
 	require.NoError(t, err)
 	view, err := testMock.GetWalletBalance()
 	require.NoError(t, err)
-	require.Equal(t, initWalletBalance, view.Balance)
+	for _, balance := range view.BalanceByCurrency {
+		require.Equal(t, initWalletBalance, balance)
+	}
 }
 
 func TestMock_GetPrice(t *testing.T) {
 	testMock, err := New()
 	require.NoError(t, err)
+	pair := fake.Word()
 	form := tradingPlatform.GetPriceForm{
-		Currency: fake.Word(),
+		Pairs: []string{pair},
 	}
 	for range fakeData.FakeRange(25, 50) {
 		var view tradingPlatform.GetPriceView
 		view, err = testMock.GetPrice(form)
 		require.NoError(t, err)
-		require.True(t, view.Value > 10000 && view.Value < 70000) // In all dataset, bitcoin must be between 10 000 and 70 000
+		price, ok := view.PriceByPair[pair]
+		require.True(t, ok)
+		require.True(t, price.AskPrice > 10000 && price.AskPrice < 70000) // In all dataset, bitcoin must be between 10 000 and 70 000
+		require.True(t, price.BidPrice > 10000 && price.BidPrice < 70000) // In all dataset, bitcoin must be between 10 000 and 70 000
 	}
 }
 
@@ -34,9 +41,10 @@ func TestMock_OpenPosition(t *testing.T) {
 	testMock, err := New()
 	require.NoError(t, err)
 	amount := initWalletBalance / 10
+	pair := currencyConst.BtcEurPair
 	form := tradingPlatform.OpenPositionForm{
-		Currency: fake.Word(),
-		Amount:   amount,
+		Pair:   pair,
+		Amount: amount,
 	}
 	view, err := testMock.OpenPosition(form)
 	require.NoError(t, err)
@@ -45,7 +53,9 @@ func TestMock_OpenPosition(t *testing.T) {
 	// balance should be decreased
 	balanceView, err := testMock.GetWalletBalance()
 	require.NoError(t, err)
-	require.Equal(t, initWalletBalance-amount, balanceView.Balance)
+	balance, ok := balanceView.BalanceByCurrency[pair]
+	require.True(t, ok)
+	require.Equal(t, initWalletBalance-amount, balance)
 
 	// position should be opened
 	openedPositions, err := testMock.GetOpenedPositions()
@@ -59,6 +69,7 @@ func TestMock_OpenPosition(t *testing.T) {
 func TestMock_ClosePosition(t *testing.T) {
 	testMock, err := New()
 	require.NoError(t, err)
+	pair := currencyConst.BtcEurPair
 	form := tradingPlatform.ClosePositionForm{
 		PositionID: fake.Word(),
 	}
@@ -67,8 +78,8 @@ func TestMock_ClosePosition(t *testing.T) {
 
 	// create existing position
 	openForm := tradingPlatform.OpenPositionForm{
-		Currency: fake.Word(),
-		Amount:   initWalletBalance / 10,
+		Pair:   pair,
+		Amount: initWalletBalance / 10,
 	}
 	openView, err := testMock.OpenPosition(openForm)
 	require.NoError(t, err)
@@ -77,7 +88,7 @@ func TestMock_ClosePosition(t *testing.T) {
 	// getting some price to get new value from dataset
 	for range fakeData.FakeRange(5, 20) {
 		_, err = testMock.GetPrice(tradingPlatform.GetPriceForm{
-			Currency: fake.Word(),
+			Pairs: []string{pair},
 		})
 		require.NoError(t, err)
 	}
@@ -92,9 +103,11 @@ func TestMock_ClosePosition(t *testing.T) {
 	require.NotEqual(t, openForm.Amount, view.Result)
 
 	// balance should not the same as start
-	require.NoError(t, err)
 	wallet, err := testMock.GetWalletBalance()
-	require.NotEqual(t, initWalletBalance, wallet.Balance)
+	require.NoError(t, err)
+	balance, ok := wallet.BalanceByCurrency[pair]
+	require.True(t, ok)
+	require.NotEqual(t, initWalletBalance, balance)
 
 	// position should not be opened
 	openedPositions, err := testMock.GetOpenedPositions()
@@ -108,6 +121,7 @@ func TestMock_ClosePosition(t *testing.T) {
 func TestMock_GetOpenedPositions(t *testing.T) {
 	testMock, err := New()
 	require.NoError(t, err)
+	pair := currencyConst.BtcEurPair
 	view, err := testMock.GetOpenedPositions()
 	require.NoError(t, err)
 	require.Len(t, view.Positions, 0)
@@ -117,8 +131,8 @@ func TestMock_GetOpenedPositions(t *testing.T) {
 	for range fakeData.FakeRange(5, 20) {
 		var position tradingPlatform.OpenPositionView
 		position, err = testMock.OpenPosition(tradingPlatform.OpenPositionForm{
-			Currency: fake.Word(),
-			Amount:   10,
+			Pair:   pair,
+			Amount: 10,
 		})
 		require.NoError(t, err)
 		positions = append(positions, position)
@@ -133,6 +147,7 @@ func TestMock_GetOpenedPositions(t *testing.T) {
 func TestMock_GetAllPositions(t *testing.T) {
 	testMock, err := New()
 	require.NoError(t, err)
+	pair := currencyConst.BtcEurPair
 	view, err := testMock.GetAllPositions()
 	require.NoError(t, err)
 	require.Len(t, view.Positions, 0)
@@ -142,8 +157,8 @@ func TestMock_GetAllPositions(t *testing.T) {
 	for range fakeData.FakeRange(5, 20) {
 		var position tradingPlatform.OpenPositionView
 		position, err = testMock.OpenPosition(tradingPlatform.OpenPositionForm{
-			Currency: fake.Word(),
-			Amount:   10,
+			Pair:   pair,
+			Amount: 10,
 		})
 		require.NoError(t, err)
 		positions = append(positions, position)

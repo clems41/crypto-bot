@@ -60,7 +60,7 @@ func openDataset1() (dataset []repositoryModel.Price, err error) {
 		bidPrice := convertedValue * (1 - fakeFeesInPercent/2/100)
 		dataset = append(dataset, repositoryModel.Price{
 			Date:     time.Unix(timestamp, 0),
-			Currency: currencyConst.BtcEurPair,
+			Pair:     currencyConst.BtcEurPair,
 			AskPrice: askPrice,
 			BidPrice: bidPrice,
 		})
@@ -99,7 +99,7 @@ func openDataset2() (dataset []repositoryModel.Price, err error) {
 		bidPrice := convertedValue * (1 - fakeFeesInPercent/100)
 		dataset = append(dataset, repositoryModel.Price{
 			Date:     time.Unix(int64(data.Ct), 0),
-			Currency: currencyConst.BtcEurPair,
+			Pair:     currencyConst.BtcEurPair,
 			AskPrice: askPrice,
 			BidPrice: bidPrice,
 		})

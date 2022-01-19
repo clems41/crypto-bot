@@ -35,7 +35,8 @@ func New() (*api, error) {
 		apiKey:    apiKey,
 		apiSecret: apiSecret,
 		balanceByCurrency: map[string]float64{
-			currencyConst.BtcEurPair: initBalance,
+			currencyConst.BtcEurPair:  initBalance,
+			currencyConst.DashEurPair: initBalance,
 		},
 		openedPositions: make(map[string]tradingPlatform.PositionView),
 		positions:       make(map[string]tradingPlatform.PositionView),
@@ -64,20 +65,24 @@ func (api *api) GetWalletBalance() (view tradingPlatform.WalletView, err error) 
 func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradingPlatform.OpenPositionView, err error) {
 	positionID := uuid.New().String()
 	priceView, err := api.GetPrice(tradingPlatform.GetPriceForm{
-		Currency: form.Currency,
+		Pairs: []string{form.Pair},
 	})
 	if err != nil {
 		return
 	}
+	price, ok := priceView.PriceByPair[form.Pair]
+	if !ok {
+		return view, tradingPlatform.ErrPairNotFound
+	}
 	position := tradingPlatform.PositionView{
 		ID:       positionID,
-		Amount:   form.Amount,
-		Currency: form.Currency,
-		AskPrice: priceView.AskPrice,
+		Amount:   form.Amount * (1 - fakeFeesInPercent/100), // trading platform always keep little percent of invest
+		Pair:     form.Pair,
+		AskPrice: price.AskPrice,
 	}
 	api.openedPositions[positionID] = position
 	api.positions[positionID] = position
-	api.balanceByCurrency[form.Currency] -= form.Amount
+	api.balanceByCurrency[form.Pair] -= form.Amount
 	view = tradingPlatform.OpenPositionView{PositionID: positionID}
 	return
 }
@@ -86,25 +91,29 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 	// Get bid price
 	position, ok := api.openedPositions[form.PositionID]
 	if !ok {
-		return view, errPositionNotFound
+		return view, tradingPlatform.ErrPositionNotFound
 	}
 	priceView, err := api.GetPrice(tradingPlatform.GetPriceForm{
-		Currency: position.Currency,
+		Pairs: []string{position.Pair},
 	})
 	if err != nil {
 		return
 	}
 
 	// calculate profit
+	price, ok := priceView.PriceByPair[position.Pair]
+	if !ok {
+		return view, tradingPlatform.ErrPairNotFound
+	}
 	askPrice := position.AskPrice
-	bidPrice := priceView.BidPrice
+	bidPrice := price.BidPrice
 	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
 	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
-	api.balanceByCurrency[position.Currency] += profit
+	api.balanceByCurrency[position.Pair] += profit
 
 	// store position result
 	position.Result = result
-	position.BidPrice = priceView.BidPrice
+	position.BidPrice = bidPrice
 	api.positions[position.ID] = position
 
 	// close position
@@ -116,43 +125,62 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 }
 
 func (api *api) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatform.GetPriceView, err error) {
-	// get prices from api
-	krakenPair, ok := currencyConversion[form.Currency]
-	if !ok {
-		return view, errCurrencyNotFound
+	// convert pairs
+	var krakenPairs []string
+	for _, pair := range form.Pairs {
+		var krakenPair string
+		krakenPair, err = GetKrakenPair(pair)
+		if err != nil {
+			return
+		}
+		krakenPairs = append(krakenPairs, krakenPair)
 	}
+
+	// get prices from api
 	krakenApi := krakenapi.New(api.apiKey, api.apiSecret)
-	result, err := krakenApi.Ticker(krakenPair)
+	result, err := krakenApi.Ticker(krakenPairs...)
 	if err != nil {
 		return
 	}
+	if result == nil {
+		return view, tradingPlatform.ErrEmptyResponse
+	}
 
-	// convert value
-	var askPrice, bidPrice float64
-	if len(result.GetPairTickerInfo(krakenPair).Ask[0]) > 0 {
-		askPriceStr := result.GetPairTickerInfo(krakenPair).Ask[0]
-		askPrice, err = strconv.ParseFloat(askPriceStr, 64)
+	// convert prices from response
+	view.PriceByPair = make(map[string]tradingPlatform.PriceView)
+	for _, krakenPair := range krakenPairs {
+		var askPrice, bidPrice float64
+		if len(result.GetPairTickerInfo(krakenPair).Ask) > 0 {
+			askPriceStr := result.GetPairTickerInfo(krakenPair).Ask[0]
+			askPrice, err = strconv.ParseFloat(askPriceStr, 64)
+			if err != nil {
+				return
+			}
+		} else {
+			return view, tradingPlatform.ErrCannotFindPriceFromResponse
+		}
+		if len(result.GetPairTickerInfo(krakenPair).Bid[0]) > 0 {
+			bidPriceStr := result.GetPairTickerInfo(krakenPair).Bid[0]
+			bidPrice, err = strconv.ParseFloat(bidPriceStr, 64)
+			if err != nil {
+				return
+			}
+		} else {
+			return view, tradingPlatform.ErrCannotFindPriceFromResponse
+		}
+
+		// fill view
+		price := tradingPlatform.PriceView{
+			AskPrice: askPrice,
+			BidPrice: bidPrice,
+			Date:     time.Now(),
+		}
+		var pair string
+		pair, err = GetProjectPair(krakenPair)
 		if err != nil {
 			return
 		}
-	} else {
-		return view, errCannotFindPriceFromResponse
-	}
-	if len(result.GetPairTickerInfo(krakenPair).Bid[0]) > 0 {
-		bidPriceStr := result.GetPairTickerInfo(krakenPair).Bid[0]
-		bidPrice, err = strconv.ParseFloat(bidPriceStr, 64)
-		if err != nil {
-			return
-		}
-	} else {
-		return view, errCannotFindPriceFromResponse
-	}
-
-	// fill view
-	view = tradingPlatform.GetPriceView{
-		AskPrice: askPrice,
-		BidPrice: bidPrice,
-		Date:     time.Now(),
+		view.PriceByPair[pair] = price
 	}
 
 	return
