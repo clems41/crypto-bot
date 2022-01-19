@@ -12,8 +12,10 @@ const (
 )
 
 var (
-	pairsToTrade = []string{
-		tradingConst.BtcEurPair,
-		tradingConst.DashEurPair,
+	pairsToTradeByPlatform = map[string][]string{
+		tradingConst.KrakenPlatform: {
+			tradingConst.BtcEurPair,
+			tradingConst.DashEurPair,
+		},
 	}
 )

@@ -3,6 +3,7 @@ package main
 import (
 	"crypto-bot/internal/domain/trading"
 	"crypto-bot/internal/repository/localRepository"
+	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/internal/service/tradingPlatform/kraken"
 	"crypto-bot/pkg/logger"
 	"os"
@@ -16,8 +17,8 @@ func main() {
 	signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, os.Interrupt, os.Kill)
 
 	// Instantiate useful services and repositories
-	//tradingApi, err := tradingPlatformMock.New()
-	tradingApi, err := kraken.New()
+	//mockTrading, err := tradingPlatformMock.New()
+	krakenApi, err := kraken.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -28,7 +29,9 @@ func main() {
 
 	// Run trading algorithm
 	tradingService := trading.NewService(
-		tradingApi,
+		[]tradingPlatform.Api{
+			krakenApi,
+		},
 		priceRepo)
 	go func() {
 		err = tradingService.Start()

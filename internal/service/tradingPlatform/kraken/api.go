@@ -42,6 +42,10 @@ func New() (*api, error) {
 	}, nil
 }
 
+func (api *api) Name() (name string) {
+	return tradingConst.KrakenPlatform
+}
+
 func (api *api) GetOpenedPositions() (view tradingPlatform.GetOpenedPositionsView, err error) {
 	for _, position := range api.openedPositions {
 		view.Positions = append(view.Positions, position)

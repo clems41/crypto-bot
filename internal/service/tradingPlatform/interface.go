@@ -1,6 +1,7 @@
 package tradingPlatform
 
 type Api interface {
+	Name() (name string)
 	GetOpenedPositions() (view GetOpenedPositionsView, err error)
 	GetAllPositions() (view GetAllPositionsView, err error)
 	GetWalletBalance() (view WalletView, err error)

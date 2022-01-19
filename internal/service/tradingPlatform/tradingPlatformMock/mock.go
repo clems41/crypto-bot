@@ -41,6 +41,10 @@ func New() (*mock, error) {
 	return newMock, nil
 }
 
+func (mock *mock) Name() (name string) {
+	return tradingConst.MockPlatform
+}
+
 func (mock *mock) GetWalletBalance() (view tradingPlatform.WalletView, err error) {
 	return tradingPlatform.WalletView{
 		BalanceByCurrency: mock.balanceByCurrency,
