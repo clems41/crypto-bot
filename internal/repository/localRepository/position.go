@@ -31,3 +31,12 @@ func (repo *positionRepo) Get(positionID string) (position *repositoryModel.Posi
 	}
 	return
 }
+
+func (repo *positionRepo) GetOpenedPositions(platformName string) (positions []*repositoryModel.Position, err error) {
+	for _, position := range repo.positions {
+		if position.PlatformName == platformName && !position.Closed {
+			positions = append(positions, position)
+		}
+	}
+	return
+}

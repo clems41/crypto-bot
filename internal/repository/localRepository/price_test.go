@@ -13,19 +13,21 @@ func TestPriceRepo_GetAndStore(t *testing.T) {
 	repo, err := NewPriceRepository()
 	require.NoError(t, err)
 	pair := fake.Word()
+	platformName := fake.Word()
 
 	// try to get last prices without storing any, should return error
-	prices, err := repo.GetLast(1, pair)
+	prices, err := repo.GetLast(platformName, 1, pair)
 	require.Error(t, err)
 
 	// Store some prices with correct pair, and should get them all
 	var currencyPrices []repositoryModel.Price
 	for range fakeData.FakeRange(5, 15) {
 		price := repositoryModel.Price{
-			Date:     time.Now(),
-			Pair:     pair,
-			AskPrice: float64(fakeData.FakeIntBetween(1, 10000)),
-			BidPrice: float64(fakeData.FakeIntBetween(1, 10000)),
+			PlatformName: platformName,
+			Date:         time.Now(),
+			Pair:         pair,
+			AskPrice:     float64(fakeData.FakeIntBetween(1, 10000)),
+			BidPrice:     float64(fakeData.FakeIntBetween(1, 10000)),
 		}
 		err = repo.Store(&price)
 		require.NoError(t, err)
@@ -47,7 +49,7 @@ func TestPriceRepo_GetAndStore(t *testing.T) {
 	}
 
 	// Get all correct pair prices
-	prices, err = repo.GetLast(len(currencyPrices), pair)
+	prices, err = repo.GetLast(platformName, len(currencyPrices), pair)
 	require.NoError(t, err)
 	require.Len(t, prices, len(currencyPrices))
 	for _, price := range prices {

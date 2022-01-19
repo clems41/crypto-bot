@@ -53,7 +53,7 @@ func (mock *mock) GetWalletBalance() (view tradingPlatform.WalletView, err error
 
 func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradingPlatform.OpenPositionView, err error) {
 	// check balance
-	currency := tradingConst.CurrencyNeededToTradePair(form.Pair)
+	currency := tradingUtils.CurrencyNeededToTradePair(form.Pair)
 	balance, ok := mock.balanceByCurrency[currency]
 	if !ok {
 		return view, tradingPlatform.ErrPairNotFound

@@ -12,7 +12,7 @@ const (
 
 const (
 	initBalance       = float64(100.0)
-	fakeFeesInPercent = 0.1
+	fakeFeesInPercent = 0.15
 )
 
 var (

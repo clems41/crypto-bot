@@ -67,7 +67,7 @@ func (api *api) GetWalletBalance() (view tradingPlatform.WalletView, err error) 
 
 func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradingPlatform.OpenPositionView, err error) {
 	// Check balance
-	currency := tradingConst.CurrencyNeededToTradePair(form.Pair)
+	currency := tradingUtils.CurrencyNeededToTradePair(form.Pair)
 	balance, ok := api.balanceByCurrency[currency]
 	if !ok {
 		return view, tradingPlatform.ErrCurrencyNotInWallet
@@ -127,7 +127,7 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 	bidPrice := price.BidPrice
 	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
 	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
-	currency := tradingConst.CurrencyNeededToTradePair(position.Pair)
+	currency := tradingUtils.CurrencyNeededToTradePair(position.Pair)
 	balance, ok := api.balanceByCurrency[currency]
 	if !ok {
 		return view, tradingPlatform.ErrCurrencyNotInWallet

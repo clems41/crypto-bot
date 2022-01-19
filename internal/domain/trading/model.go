@@ -6,9 +6,3 @@ type Position struct {
 	AskPrice float64
 	BidPrice float64
 }
-
-type Price struct {
-	Timestamp uint
-	AskPrice  float64
-	BidPrice  float64
-}
