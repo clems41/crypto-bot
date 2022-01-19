@@ -21,16 +21,20 @@ type service struct {
 	quitChannel                       chan bool                     // quit goroutine when program exit
 	platformApis                      []tradingPlatform.Api         // communicate with trading platforms
 	priceRepository                   repository.Price              // use to store and get previous prices
+	positionRepo                      repository.Position           // use to store and get previous positions
 	startTime                         time.Time                     // datetime when lago has been started
 	initialWalletByPlatformByCurrency map[string]map[string]float64 // initial wallet before opening first position by platform and by currency
 	openedPositionIdsByTimestamp      map[int64]string              // use to know if position has been opened on specific timestamp
 }
 
-func NewService(platformApis []tradingPlatform.Api, priceRepo repository.Price) Service {
+func NewService(platformApis []tradingPlatform.Api,
+	priceRepo repository.Price,
+	positionRepo repository.Position) Service {
 	return &service{
 		quitChannel:                       make(chan bool),
 		platformApis:                      platformApis,
 		priceRepository:                   priceRepo,
+		positionRepo:                      positionRepo,
 		openedPositionIdsByTimestamp:      make(map[int64]string),
 		initialWalletByPlatformByCurrency: make(map[string]map[string]float64),
 	}
@@ -184,10 +188,17 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			}
 
 			// Open and close positions depending on new prices and previous positions
-			if len(openedPositions.Positions) >= maxOpenedPositions {
-				logger.Infof("No new position will be opened because max %d has been reached", maxOpenedPositions)
+			var nbOpenedPositionsForCurrency int
+			for _, position := range openedPositions.Positions {
+				if tradingConst.CanTradePairUsingCurrency(position.Pair, currency) {
+					nbOpenedPositionsForCurrency++
+				}
+			}
+			if nbOpenedPositionsForCurrency >= maxOpenedPositionsByCurrency {
+				logger.Infof("No new position for pair %s will be opened because max %d has been reached",
+					pair, maxOpenedPositionsByCurrency)
 			} else if balanceForCurrency > 0 {
-				err = svc.openNewPositions(balanceForCurrency, pair, platform)
+				err = svc.openNewPositions(balanceForCurrency, pair, nbOpenedPositionsForCurrency, platform)
 				if err != nil {
 					return
 				}
@@ -202,7 +213,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 	return
 }
 
-func (svc *service) openNewPositions(actualBalance float64, pair string, platform tradingPlatform.Api) (err error) {
+func (svc *service) openNewPositions(actualBalance float64, pair string, nbOpenedPosition int, platform tradingPlatform.Api) (err error) {
 	// Get last prices
 	var lastPrices []*repositoryModel.Price
 	lastPrices, err = svc.priceRepository.GetLast(nbOfIncreasingValueToOpenPosition+1, pair)
@@ -210,7 +221,7 @@ func (svc *service) openNewPositions(actualBalance float64, pair string, platfor
 		return
 	}
 
-	shouldOpenPosition, err := svc.shouldOpenPosition(actualBalance, lastPrices)
+	shouldOpenPosition, err := svc.shouldOpenPosition(actualBalance, lastPrices, nbOpenedPosition)
 	if err != nil {
 		return
 	}
@@ -220,7 +231,7 @@ func (svc *service) openNewPositions(actualBalance float64, pair string, platfor
 		form := tradingPlatform.OpenPositionForm{
 			AskPrice: lastPrice.AskPrice,
 			Pair:     pair,
-			Amount:   actualBalance * balanceRatioToInvest,
+			Amount:   svc.getAmountToInvest(actualBalance, nbOpenedPosition),
 		}
 		var view tradingPlatform.OpenPositionView
 		view, err = platform.OpenPosition(form)
@@ -229,6 +240,18 @@ func (svc *service) openNewPositions(actualBalance float64, pair string, platfor
 		}
 		logger.Infof("Opening new position %s with amount of %f for pair %s", view.PositionID, form.Amount, pair)
 		svc.openedPositionIdsByTimestamp[lastPrice.Date.Unix()] = view.PositionID
+		position := repositoryModel.Position{
+			ID:       view.PositionID,
+			AskDate:  time.Now(),
+			Pair:     form.Pair,
+			Amount:   form.Amount,
+			AskPrice: form.AskPrice,
+			Closed:   false,
+		}
+		err = svc.positionRepo.Store(&position)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -249,18 +272,31 @@ func (svc *service) closePositions(pair string, actualBidPrice float64, openedPo
 			}
 			logger.Infof("Closing position %s for pair %s ask=%0.2f bid=%0.2f make result of %0.4f with amount %0.2f (%0.3f%%)",
 				position.ID, position.Pair, view.AskPrice, actualBidPrice, view.Result, position.Amount, resultInPercent)
+			var positionToUpdate *repositoryModel.Position
+			positionToUpdate, err = svc.positionRepo.Get(position.ID)
+			if err != nil {
+				return
+			}
+			positionToUpdate.Closed = true
+			positionToUpdate.BidPrice = view.BidPrice
+			positionToUpdate.Result = view.Result
+			positionToUpdate.BidDate = time.Now()
 		}
 	}
 	return
 }
 
-func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repositoryModel.Price) (shouldOpen bool, err error) {
+func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repositoryModel.Price, nbOpenedPosition int) (shouldOpen bool, err error) {
 	// Don't open if not enough in balance
+	if nbOpenedPosition == minimumAmountToOpenPosition {
+		shouldOpen = false
+		return
+	}
 	if actualBalance == 0 {
 		shouldOpen = false
 		return
 	}
-	if actualBalance*balanceRatioToInvest < minimumAmountToOpenPosition {
+	if svc.getAmountToInvest(actualBalance, nbOpenedPosition) < minimumAmountToOpenPosition {
 		shouldOpen = false
 		return
 	}
@@ -279,6 +315,13 @@ func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repo
 			shouldOpen = false
 			return
 		}
+	}
+	return
+}
+
+func (svc *service) getAmountToInvest(currentBalance float64, nbOpenedPosition int) (amount float64) {
+	if nbOpenedPosition != maxOpenedPositionsByCurrency {
+		amount = currentBalance / float64(maxOpenedPositionsByCurrency-nbOpenedPosition)
 	}
 	return
 }

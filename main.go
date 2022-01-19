@@ -26,13 +26,18 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	positionRepo, err := localRepository.NewPositionRepository()
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	// Run trading algorithm
 	tradingService := trading.NewService(
 		[]tradingPlatform.Api{
 			krakenApi,
 		},
-		priceRepo)
+		priceRepo,
+		positionRepo)
 	go func() {
 		err = tradingService.Start()
 		if err != nil {
