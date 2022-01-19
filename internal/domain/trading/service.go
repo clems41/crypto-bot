@@ -18,20 +18,21 @@ type Service interface {
 }
 
 type service struct {
-	quitChannel                  chan bool             // quit goroutine when program exit
-	platformApis                 []tradingPlatform.Api // communicate with trading platforms
-	priceRepository              repository.Price      // use to store and get previous prices
-	startTime                    time.Time             // datetime when lago has been started
-	initialBalance               map[string]float64    // initial balance before running algo for each pair
-	openedPositionIdsByTimestamp map[int64]string      // use to know if position has been opened on specific timestamp
+	quitChannel                       chan bool                     // quit goroutine when program exit
+	platformApis                      []tradingPlatform.Api         // communicate with trading platforms
+	priceRepository                   repository.Price              // use to store and get previous prices
+	startTime                         time.Time                     // datetime when lago has been started
+	initialWalletByPlatformByCurrency map[string]map[string]float64 // initial wallet before opening first position by platform and by currency
+	openedPositionIdsByTimestamp      map[int64]string              // use to know if position has been opened on specific timestamp
 }
 
 func NewService(platformApis []tradingPlatform.Api, priceRepo repository.Price) Service {
 	return &service{
-		quitChannel:                  make(chan bool),
-		platformApis:                 platformApis,
-		priceRepository:              priceRepo,
-		openedPositionIdsByTimestamp: make(map[int64]string),
+		quitChannel:                       make(chan bool),
+		platformApis:                      platformApis,
+		priceRepository:                   priceRepo,
+		openedPositionIdsByTimestamp:      make(map[int64]string),
+		initialWalletByPlatformByCurrency: make(map[string]map[string]float64),
 	}
 }
 
@@ -98,7 +99,11 @@ func (svc *service) Stop() (err error) {
 		// Calculate estimated profit
 		var initialBalance, finalBalance float64
 		for currency, balance := range walletView.BalanceByCurrency {
-			initialBalanceCurrency, ok := svc.initialBalance[currency]
+			_, ok := svc.initialWalletByPlatformByCurrency[platform.Name()]
+			if !ok {
+				return errCurrencyNotInBalance
+			}
+			initialBalanceCurrency, ok := svc.initialWalletByPlatformByCurrency[platform.Name()][currency]
 			if !ok {
 				return errCurrencyNotInBalance
 			}
@@ -124,9 +129,11 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			return
 		}
 		logger.Infof("Current balance is %v", walletView.BalanceByCurrency)
-		if svc.initialBalance == nil { // if not init, it means it's the first run, so update it
-			svc.initialBalance = make(map[string]float64)
-			svc.initialBalance = walletView.BalanceByCurrency
+		if _, ok := svc.initialWalletByPlatformByCurrency[platform.Name()]; !ok { // if not init, it means it's the first run, so update it
+			svc.initialWalletByPlatformByCurrency[platform.Name()] = make(map[string]float64)
+			for currency, balance := range walletView.BalanceByCurrency {
+				svc.initialWalletByPlatformByCurrency[platform.Name()][currency] = balance
+			}
 		}
 
 		// Getting actual price of pair
@@ -186,7 +193,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				}
 			}
 
-			err = svc.closePositions(price.BidPrice, openedPositions.Positions, platform)
+			err = svc.closePositions(pair, price.BidPrice, openedPositions.Positions, platform)
 			if err != nil {
 				return
 			}
@@ -226,9 +233,12 @@ func (svc *service) openNewPositions(actualBalance float64, pair string, platfor
 	return
 }
 
-func (svc *service) closePositions(actualBidPrice float64, openedPositions []tradingPlatform.PositionView, platform tradingPlatform.Api) (err error) {
+func (svc *service) closePositions(pair string, actualBidPrice float64, openedPositions []tradingPlatform.PositionView, platform tradingPlatform.Api) (err error) {
 	// close position if actual price is more than 0.1% of price position
 	for _, position := range openedPositions {
+		if position.Pair != pair {
+			continue // skip if pair position is not the same to avoid miscalculation
+		}
 		resultInPercent := tradingUtils.GetResultInPercent(position.AskPrice, actualBidPrice, position.Amount)
 		if resultInPercent > resultToClosePositionInPercent {
 			form := tradingPlatform.ClosePositionForm{PositionID: position.ID}

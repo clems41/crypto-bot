@@ -45,6 +45,12 @@ func TestEstimateProfit(t *testing.T) {
 			TradingDuration:   2 * time.Hour,
 			EstimatedDuration: 5 * time.Hour,
 		}: 275.57,
+		{
+			InitialBalance:    100,
+			FinalBalance:      150,
+			TradingDuration:   2 * time.Hour,
+			EstimatedDuration: 5 * time.Hour,
+		}: 275.57,
 	}
 	for args, expected := range tests {
 		actual := EstimateProfit(args.InitialBalance, args.FinalBalance, args.TradingDuration, args.EstimatedDuration)
