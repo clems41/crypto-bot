@@ -1,7 +1,7 @@
 package kraken
 
 import (
-	"crypto-bot/internal/constant/currencyConst"
+	"crypto-bot/internal/constant/tradingConst"
 	krakenapi "github.com/beldur/kraken-go-api-client"
 )
 
@@ -17,7 +17,7 @@ const (
 
 var (
 	pairConversion = map[string]string{
-		currencyConst.BtcEurPair:  krakenapi.XXBTZEUR,
-		currencyConst.DashEurPair: krakenapi.DASHEUR,
+		tradingConst.BtcEurPair:  krakenapi.XXBTZEUR,
+		tradingConst.DashEurPair: krakenapi.DASHEUR,
 	}
 )

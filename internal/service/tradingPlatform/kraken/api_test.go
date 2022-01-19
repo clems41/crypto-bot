@@ -1,7 +1,7 @@
 package kraken
 
 import (
-	"crypto-bot/internal/constant/currencyConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/service/tradingPlatform"
 	"github.com/icrowley/fake"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestApi_GetOpenedPositions(t *testing.T) {
 func TestApi_GetPrice(t *testing.T) {
 	apiTest, err := New()
 	require.NoError(t, err)
-	pair := currencyConst.BtcEurPair
+	pair := tradingConst.BtcEurPair
 
 	// try with non-existing pair, should return error
 	form := tradingPlatform.GetPriceForm{

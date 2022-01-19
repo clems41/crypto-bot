@@ -1,7 +1,7 @@
 package tradingPlatformMock
 
 import (
-	"crypto-bot/internal/constant/currencyConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/repository/repositoryModel"
 	"crypto-bot/pkg/utils/pathUtils"
 	"encoding/csv"
@@ -60,7 +60,7 @@ func openDataset1() (dataset []repositoryModel.Price, err error) {
 		bidPrice := convertedValue * (1 - fakeFeesInPercent/2/100)
 		dataset = append(dataset, repositoryModel.Price{
 			Date:     time.Unix(timestamp, 0),
-			Pair:     currencyConst.BtcEurPair,
+			Pair:     tradingConst.BtcEurPair,
 			AskPrice: askPrice,
 			BidPrice: bidPrice,
 		})
@@ -99,7 +99,7 @@ func openDataset2() (dataset []repositoryModel.Price, err error) {
 		bidPrice := convertedValue * (1 - fakeFeesInPercent/100)
 		dataset = append(dataset, repositoryModel.Price{
 			Date:     time.Unix(int64(data.Ct), 0),
-			Pair:     currencyConst.BtcEurPair,
+			Pair:     tradingConst.BtcEurPair,
 			AskPrice: askPrice,
 			BidPrice: bidPrice,
 		})

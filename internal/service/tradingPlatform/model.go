@@ -46,7 +46,10 @@ type OpenPositionView struct {
 }
 
 type ClosePositionView struct {
-	Result float64
+	AskPrice float64
+	BidPrice float64
+	Result   float64
+	Profit   float64
 }
 
 type PriceView struct {

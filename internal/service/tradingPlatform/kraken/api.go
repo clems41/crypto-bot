@@ -1,7 +1,7 @@
 package kraken
 
 import (
-	"crypto-bot/internal/constant/currencyConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/envUtils"
 	"crypto-bot/pkg/utils/tradingUtils"
@@ -35,8 +35,7 @@ func New() (*api, error) {
 		apiKey:    apiKey,
 		apiSecret: apiSecret,
 		balanceByCurrency: map[string]float64{
-			currencyConst.BtcEurPair:  initBalance,
-			currencyConst.DashEurPair: initBalance,
+			tradingConst.EuroCurrency: initBalance,
 		},
 		openedPositions: make(map[string]tradingPlatform.PositionView),
 		positions:       make(map[string]tradingPlatform.PositionView),
@@ -63,6 +62,17 @@ func (api *api) GetWalletBalance() (view tradingPlatform.WalletView, err error) 
 }
 
 func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradingPlatform.OpenPositionView, err error) {
+	// Check balance
+	currency := tradingConst.CurrencyNeededToTradePair(form.Pair)
+	balance, ok := api.balanceByCurrency[currency]
+	if !ok {
+		return view, tradingPlatform.ErrCurrencyNotInWallet
+	}
+	if form.Amount > balance {
+		return view, tradingPlatform.ErrNotEnoughCash
+	}
+
+	// Create position
 	positionID := uuid.New().String()
 	priceView, err := api.GetPrice(tradingPlatform.GetPriceForm{
 		Pairs: []string{form.Pair},
@@ -80,9 +90,13 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 		Pair:     form.Pair,
 		AskPrice: price.AskPrice,
 	}
+
+	// Push order
 	api.openedPositions[positionID] = position
 	api.positions[positionID] = position
-	api.balanceByCurrency[form.Pair] -= form.Amount
+
+	// Update wallet balance
+	api.balanceByCurrency[currency] = balance - form.Amount
 	view = tradingPlatform.OpenPositionView{PositionID: positionID}
 	return
 }
@@ -119,7 +133,10 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 	// close position
 	delete(api.openedPositions, form.PositionID)
 	view = tradingPlatform.ClosePositionView{
-		Result: result,
+		AskPrice: askPrice,
+		BidPrice: bidPrice,
+		Result:   result,
+		Profit:   profit,
 	}
 	return
 }

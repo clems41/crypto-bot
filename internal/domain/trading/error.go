@@ -3,6 +3,6 @@ package trading
 import "fmt"
 
 var (
-	errCurrencyNotInBalance = fmt.Errorf("pair is not define in this wallet")
+	errCurrencyNotInBalance = fmt.Errorf("currency is wallet")
 	errPairNotFound         = fmt.Errorf("pair cannot be found")
 )

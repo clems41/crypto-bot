@@ -7,13 +7,13 @@ import (
 
 // EstimateProfit will estimate money that will be earned for a specific duration based on actual gain on a defined period of time
 func EstimateProfit(initialBalance, finalBalance float64, tradingDuration, durationToEstimate time.Duration) (
-	profit float64) {
+	estimation float64) {
 	if initialBalance != 0 {
 		gainCoefficient := finalBalance / initialBalance
 		//gainCoefficient := 1 + (finalBalance-initialBalance)/initialBalance
 		if tradingDuration != 0 {
 			durationRatio := durationToEstimate.Seconds() / tradingDuration.Seconds()
-			profit = initialBalance * math.Pow(gainCoefficient, durationRatio)
+			estimation = initialBalance * math.Pow(gainCoefficient, durationRatio)
 		}
 	}
 	return

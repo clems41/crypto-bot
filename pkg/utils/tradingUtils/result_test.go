@@ -1,8 +1,8 @@
 package tradingUtils
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
-	"math"
 	"testing"
 	"time"
 )
@@ -23,26 +23,32 @@ func TestEstimateProfit(t *testing.T) {
 		}: 100,
 		{
 			InitialBalance:    100,
-			FinalBalance:      100.5,
-			TradingDuration:   1 * time.Second,
+			FinalBalance:      100.1,
+			TradingDuration:   1 * time.Minute,
 			EstimatedDuration: 1 * time.Hour,
-		}: 100 * math.Pow(1+(100.5-100)/100, 60*60),
+		}: 106.18,
 		{
 			InitialBalance:    100,
-			FinalBalance:      99.5,
-			TradingDuration:   1 * time.Second,
-			EstimatedDuration: 1 * time.Hour,
-		}: 100 * math.Pow(1+(99.5-100)/100, 60*60),
+			FinalBalance:      99.99,
+			TradingDuration:   1 * time.Hour,
+			EstimatedDuration: 24 * time.Hour,
+		}: 99.76,
 		{
 			InitialBalance:    100,
 			FinalBalance:      100.1,
 			TradingDuration:   1 * time.Hour,
 			EstimatedDuration: 365 * 24 * time.Hour,
-		}: 100 * math.Pow(1+(100.1-100)/100, 365*24),
+		}: 634627.25,
+		{
+			InitialBalance:    100,
+			FinalBalance:      150,
+			TradingDuration:   2 * time.Hour,
+			EstimatedDuration: 5 * time.Hour,
+		}: 275.57,
 	}
 	for args, expected := range tests {
 		actual := EstimateProfit(args.InitialBalance, args.FinalBalance, args.TradingDuration, args.EstimatedDuration)
-		require.Equal(t, expected, actual)
+		require.Equal(t, fmt.Sprintf("%0.2f", expected), fmt.Sprintf("%0.2f", actual)) // compare only with 2 decimals
 	}
 }
 

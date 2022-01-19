@@ -1,8 +1,4 @@
-package currencyConst
-
-/* Currencies */
-
-/* Pairs */
+package tradingConst
 
 const (
 	BtcEurPair  = "BTC_EUR"

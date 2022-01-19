@@ -1,7 +1,7 @@
 package tradingPlatformMock
 
 import (
-	"crypto-bot/internal/constant/currencyConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/repository/repositoryModel"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/testUtils/fakeData"
@@ -31,7 +31,7 @@ func New() (*mock, error) {
 
 	newMock := &mock{
 		balanceByCurrency: map[string]float64{
-			currencyConst.BtcEurPair: initWalletBalance,
+			tradingConst.EuroCurrency: initWalletBalance,
 		},
 		actualDatasetIndex: initDatasetIndex,
 		positions:          make(map[string]tradingPlatform.PositionView),
@@ -48,6 +48,15 @@ func (mock *mock) GetWalletBalance() (view tradingPlatform.WalletView, err error
 }
 
 func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradingPlatform.OpenPositionView, err error) {
+	// check balance
+	currency := tradingConst.CurrencyNeededToTradePair(form.Pair)
+	balance, ok := mock.balanceByCurrency[currency]
+	if !ok {
+		return view, tradingPlatform.ErrPairNotFound
+	}
+	if form.Amount > balance {
+		return view, tradingPlatform.ErrNotEnoughCash
+	}
 	// create new position
 	positionID := fakeData.UuidWithOnlyAlphaNumeric()
 	position := tradingPlatform.PositionView{
@@ -62,11 +71,7 @@ func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view trad
 	mock.openedPositions[positionID] = position
 
 	// decrease balance
-	balance, ok := mock.balanceByCurrency[form.Pair]
-	if !ok {
-		return view, tradingPlatform.ErrPairNotFound
-	}
-	mock.balanceByCurrency[form.Pair] = balance - form.Amount
+	mock.balanceByCurrency[currency] = balance - form.Amount
 
 	// fill view
 	view = tradingPlatform.OpenPositionView{PositionID: positionID}
@@ -99,7 +104,10 @@ func (mock *mock) ClosePosition(form tradingPlatform.ClosePositionForm) (view tr
 
 	// fill view
 	view = tradingPlatform.ClosePositionView{
-		Result: result,
+		AskPrice: askPrice,
+		BidPrice: bidPrice,
+		Result:   result,
+		Profit:   profit,
 	}
 	return
 }
