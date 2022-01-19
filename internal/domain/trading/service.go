@@ -188,17 +188,20 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			}
 
 			// Open and close positions depending on new prices and previous positions
-			var nbOpenedPositionsForCurrency int
+			var nbOpenedPositionsForCurrency, nbOpenedPositionsForPair int
 			for _, position := range openedPositions.Positions {
 				if tradingConst.CanTradePairUsingCurrency(position.Pair, currency) {
 					nbOpenedPositionsForCurrency++
+				}
+				if pair == position.Pair {
+					nbOpenedPositionsForPair++
 				}
 			}
 			if nbOpenedPositionsForCurrency >= maxOpenedPositionsByCurrency {
 				logger.Infof("No new position for pair %s will be opened because max %d has been reached",
 					pair, maxOpenedPositionsByCurrency)
 			} else if balanceForCurrency > 0 {
-				err = svc.openNewPositions(balanceForCurrency, pair, nbOpenedPositionsForCurrency, platform)
+				err = svc.openNewPositions(balanceForCurrency, pair, nbOpenedPositionsForCurrency, nbOpenedPositionsForPair, platform)
 				if err != nil {
 					return
 				}
@@ -213,7 +216,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 	return
 }
 
-func (svc *service) openNewPositions(actualBalance float64, pair string, nbOpenedPosition int, platform tradingPlatform.Api) (err error) {
+func (svc *service) openNewPositions(actualBalance float64, pair string, nbOpenedPositionsForCurrency, nbOpenedPositionsForPair int, platform tradingPlatform.Api) (err error) {
 	// Get last prices
 	var lastPrices []*repositoryModel.Price
 	lastPrices, err = svc.priceRepository.GetLast(nbOfIncreasingValueToOpenPosition+1, pair)
@@ -221,7 +224,7 @@ func (svc *service) openNewPositions(actualBalance float64, pair string, nbOpene
 		return
 	}
 
-	shouldOpenPosition, err := svc.shouldOpenPosition(actualBalance, lastPrices, nbOpenedPosition)
+	shouldOpenPosition, err := svc.shouldOpenPosition(actualBalance, lastPrices, nbOpenedPositionsForCurrency, nbOpenedPositionsForPair)
 	if err != nil {
 		return
 	}
@@ -231,7 +234,7 @@ func (svc *service) openNewPositions(actualBalance float64, pair string, nbOpene
 		form := tradingPlatform.OpenPositionForm{
 			AskPrice: lastPrice.AskPrice,
 			Pair:     pair,
-			Amount:   svc.getAmountToInvest(actualBalance, nbOpenedPosition),
+			Amount:   svc.getAmountToInvest(actualBalance, nbOpenedPositionsForCurrency),
 		}
 		var view tradingPlatform.OpenPositionView
 		view, err = platform.OpenPosition(form)
@@ -286,9 +289,13 @@ func (svc *service) closePositions(pair string, actualBidPrice float64, openedPo
 	return
 }
 
-func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repositoryModel.Price, nbOpenedPosition int) (shouldOpen bool, err error) {
+func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repositoryModel.Price, nbOpenedPositionsForCurrency, nbOpenedPositionsForPair int) (shouldOpen bool, err error) {
 	// Don't open if not enough in balance
-	if nbOpenedPosition == minimumAmountToOpenPosition {
+	if nbOpenedPositionsForCurrency >= maxOpenedPositionsByCurrency {
+		shouldOpen = false
+		return
+	}
+	if nbOpenedPositionsForPair >= maxOpenedPositionsByPair {
 		shouldOpen = false
 		return
 	}
@@ -296,7 +303,7 @@ func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repo
 		shouldOpen = false
 		return
 	}
-	if svc.getAmountToInvest(actualBalance, nbOpenedPosition) < minimumAmountToOpenPosition {
+	if svc.getAmountToInvest(actualBalance, nbOpenedPositionsForCurrency) < minimumAmountToOpenPosition {
 		shouldOpen = false
 		return
 	}
@@ -319,9 +326,9 @@ func (svc *service) shouldOpenPosition(actualBalance float64, lastPrices []*repo
 	return
 }
 
-func (svc *service) getAmountToInvest(currentBalance float64, nbOpenedPosition int) (amount float64) {
-	if nbOpenedPosition != maxOpenedPositionsByCurrency {
-		amount = currentBalance / float64(maxOpenedPositionsByCurrency-nbOpenedPosition)
+func (svc *service) getAmountToInvest(currentBalance float64, nbOpenedPositionsForCurrency int) (amount float64) {
+	if nbOpenedPositionsForCurrency != maxOpenedPositionsByCurrency {
+		amount = currentBalance / float64(maxOpenedPositionsByCurrency-nbOpenedPositionsForCurrency)
 	}
 	return
 }
