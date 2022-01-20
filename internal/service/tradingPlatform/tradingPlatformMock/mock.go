@@ -63,10 +63,11 @@ func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view trad
 	}
 	// create new position
 	positionID := fakeData.UuidWithOnlyAlphaNumeric()
+	amountAfterFees := form.Amount * (1 - fakeFeesInPercent/100)
 	position := tradingPlatform.PositionView{
 		ID:       positionID,
 		Pair:     form.Pair,
-		Amount:   form.Amount,
+		Amount:   amountAfterFees,
 		AskPrice: form.AskPrice,
 	}
 
@@ -78,7 +79,11 @@ func (mock *mock) OpenPosition(form tradingPlatform.OpenPositionForm) (view trad
 	mock.balanceByCurrency[currency] = balance - form.Amount
 
 	// fill view
-	view = tradingPlatform.OpenPositionView{PositionID: positionID}
+	view = tradingPlatform.OpenPositionView{
+		PositionID: positionID,
+		Amount:     amountAfterFees,
+		AskPrice:   form.AskPrice,
+	}
 	return
 }
 
@@ -110,8 +115,7 @@ func (mock *mock) ClosePosition(form tradingPlatform.ClosePositionForm) (view tr
 	view = tradingPlatform.ClosePositionView{
 		AskPrice: askPrice,
 		BidPrice: bidPrice,
-		Result:   result,
-		Profit:   profit,
+		Amount:   position.Amount,
 	}
 	return
 }

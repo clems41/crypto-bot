@@ -16,8 +16,8 @@ const (
 
 const (
 	defaultDelayBetweenEachRunInMilliSeconds     = "5000"
-	defaultMinimumResultInPercentToClosePosition = "-1"
-	defaultNumberOfPreviousPricesToCompare       = "1"
+	defaultMinimumResultInPercentToClosePosition = "0.4"
+	defaultNumberOfPreviousPricesToCompare       = "40"
 	defaultMaxOpenedPositionsByPair              = "1"
 	defaultMinimumAmountToOpenPosition           = "10"
 )

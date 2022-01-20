@@ -149,8 +149,7 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 	view = tradingPlatform.ClosePositionView{
 		AskPrice: askPrice,
 		BidPrice: bidPrice,
-		Result:   result,
-		Profit:   profit,
+		Amount:   position.Amount,
 	}
 	return
 }

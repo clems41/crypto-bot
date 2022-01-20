@@ -455,9 +455,11 @@ func (svc *service) closePosition(position Position) (err error) {
 		return errPlatformNotFound
 	}
 	closeView, err = platform.ClosePosition(closeForm)
-	resultInPercent := tradingUtils.GetResultInPercent(closeView.AskPrice, closeView.BidPrice, position.Amount)
+	resultInPercent := tradingUtils.GetResultInPercent(closeView.AskPrice, closeView.BidPrice, closeView.Amount)
+	result := tradingUtils.GetResult(closeView.AskPrice, closeView.BidPrice, closeView.Amount)
+	profit := tradingUtils.GetProfit(closeView.AskPrice, closeView.BidPrice, closeView.Amount)
 	logger.Infof("Closing position %s make profit of %0.2f (%0.2f%%) with ask=%0.2f bid=%0.2f and amount=%0.2f",
-		position.ID, closeView.Profit, resultInPercent, closeView.AskPrice, closeView.BidPrice, position.Amount)
+		position.ID, profit, resultInPercent, closeView.AskPrice, closeView.BidPrice, position.Amount)
 
 	// When position has been closed, wallet should be updated
 	err = svc.updateWallet(position.PlatformName)
@@ -473,7 +475,9 @@ func (svc *service) closePosition(position Position) (err error) {
 	positionToUpdate.BidPrice = closeView.BidPrice
 	positionToUpdate.BidDate = time.Now()
 	positionToUpdate.Closed = true
-	positionToUpdate.Result = tradingUtils.GetResult(closeView.AskPrice, closeView.BidPrice, position.Amount)
+	positionToUpdate.Result = result
+	positionToUpdate.ResultInPercent = resultInPercent
+	positionToUpdate.Profit = profit
 	err = svc.positionRepo.Store(positionToUpdate)
 	if err != nil {
 		return

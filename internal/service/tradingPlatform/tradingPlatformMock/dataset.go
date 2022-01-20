@@ -56,8 +56,8 @@ func openDataset1() (dataset []repositoryModel.Price, err error) {
 		if err != nil {
 			return
 		}
-		askPrice := convertedValue * (1 + fakeFeesInPercent/2/100)
-		bidPrice := convertedValue * (1 - fakeFeesInPercent/2/100)
+		askPrice := convertedValue * (1 + differenceBetweenAskAndBidInPercent/2/100)
+		bidPrice := convertedValue * (1 - differenceBetweenAskAndBidInPercent/2/100)
 		dataset = append(dataset, repositoryModel.Price{
 			Date:     time.Unix(timestamp, 0),
 			Pair:     tradingConst.BtcEurPair,
@@ -95,8 +95,8 @@ func openDataset2() (dataset []repositoryModel.Price, err error) {
 		}
 
 		// apply fake fees of 0.15% for ask and bid
-		askPrice := convertedValue * fakeFeesInPercent / 100
-		bidPrice := convertedValue * (1 - fakeFeesInPercent/100)
+		askPrice := convertedValue * differenceBetweenAskAndBidInPercent / 100
+		bidPrice := convertedValue * (1 - differenceBetweenAskAndBidInPercent/100)
 		dataset = append(dataset, repositoryModel.Price{
 			Date:     time.Unix(int64(data.Ct), 0),
 			Pair:     tradingConst.BtcEurPair,

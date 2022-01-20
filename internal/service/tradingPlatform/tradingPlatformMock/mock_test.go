@@ -111,8 +111,7 @@ func TestMock_ClosePosition(t *testing.T) {
 	}
 	view, err = testMock.ClosePosition(form)
 	require.NoError(t, err) // should not return error because position exists
-	require.NotEqual(t, float64(0), view.Result)
-	require.NotEqual(t, openForm.Amount, view.Result)
+	require.NotEqual(t, float64(0), view.BidPrice)
 
 	// balance should not the same as start
 	wallet, err := testMock.GetWalletBalance()
