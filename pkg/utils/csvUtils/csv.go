@@ -69,7 +69,8 @@ func AppendLines(filePath string, lines ...[]string) (err error) {
 	}
 
 	// update file
-	output := string(input) + strings.Join(linesStr, "\n")
+	data := strings.Join(linesStr, "\n") + "\n"
+	output := string(input) + data
 	err = ioutil.WriteFile(filePath, []byte(output), 0644)
 	if err != nil {
 		return

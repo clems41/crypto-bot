@@ -124,10 +124,11 @@ func TestUpdateLineOrAppend(t *testing.T) {
 	// appending existing lines
 	matchingString := fakeData.UuidWithOnlyAlphaNumeric()
 	previousLine := []string{matchingString, fakeData.UniqueEmail()}
+	existingLine := []string{fake.Word(), fake.Word()}
 	newLine := []string{matchingString, fakeData.UniqueEmail()}
 	lines := [][]string{
 		previousLine,
-		{fake.Word(), fake.Word()},
+		existingLine,
 	}
 	var input string
 	var linesStr []string
@@ -150,6 +151,8 @@ func TestUpdateLineOrAppend(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, strings.Contains(string(fileUpdated), strings.Join(newLine, ",")),
 		"file should contain %s", strings.Join(newLine, ","))
+	assert.True(t, strings.Contains(string(fileUpdated), strings.Join(existingLine, ",")),
+		"file should contain %s", strings.Join(existingLine, ","))
 	assert.False(t, strings.Contains(string(fileUpdated), strings.Join(previousLine, ",")),
 		"file should not contain %s", strings.Join(previousLine, ","))
 

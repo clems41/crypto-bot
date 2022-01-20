@@ -21,7 +21,7 @@ func NewPriceRepository() (repo *priceRepo, err error) {
 	if err != nil {
 		return
 	}
-	csvPath := fmt.Sprintf("%s/%s", rootPath, csvFileNamePosition)
+	csvPath := fmt.Sprintf("%s/%s", rootPath, csvFileNamePrice)
 
 	// empty file or creating new one
 	err = csvUtils.ForceCreateFile(csvPath)
