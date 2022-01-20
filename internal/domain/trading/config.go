@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	envDelayBetweenEachRunInMilliSeconds     = ""
-	envMinimumResultInPercentToClosePosition = ""
-	envNumberOfPreviousPricesToCompare       = ""
-	envMaxOpenedPositionsByPair              = ""
-	envMinimumAmountToOpenPosition           = ""
+	envDelayBetweenEachRunInMilliSeconds     = "DELAY_RUN_MS"
+	envMinimumResultInPercentToClosePosition = "MIN_RESULT"
+	envNumberOfPreviousPricesToCompare       = "NB_PRICES"
+	envMaxOpenedPositionsByPair              = "MAX_POSITION_PAIR"
+	envMinimumAmountToOpenPosition           = "MIN_AMOUNT"
 )
 
 const (
 	defaultDelayBetweenEachRunInMilliSeconds     = "5000"
-	defaultMinimumResultInPercentToClosePosition = "0.2"
-	defaultNumberOfPreviousPricesToCompare       = "10"
+	defaultMinimumResultInPercentToClosePosition = "-1"
+	defaultNumberOfPreviousPricesToCompare       = "1"
 	defaultMaxOpenedPositionsByPair              = "1"
 	defaultMinimumAmountToOpenPosition           = "10"
 )

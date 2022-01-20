@@ -21,19 +21,22 @@ type Service interface {
 	updatePrices(platformName string) (err error)
 	shouldOpenNewPosition(platformName string, pair string) (shouldOpen bool, err error)
 	shouldClosePosition(position Position) (shouldClose bool, err error)
+	openPosition(platformName string, pair string) (err error)
+	closePosition(position Position) (err error)
 	getAmountToInvest(platformName string, pair string) (amount float64, err error)
 	getAskPrice(platformName string, pair string) (askPrice float64, err error)
+	getBidPrice(platformName string, pair string) (bidPrice float64, err error)
 }
 
 type service struct {
-	quitChannel                        chan bool                     // quit goroutine when program exit
-	config                             *Config                       // config that should be applied with trading algorithm
-	platformApis                       []tradingPlatform.Api         // communicate with trading platforms
-	priceRepo                          repository.Price              // use to store and get previous prices
-	positionRepo                       repository.Position           // use to store and get previous positions
-	startTime                          time.Time                     // datetime when lago has been started
-	initialBalanceByPlatformByCurrency map[string]map[string]float64 // initial balance before opening first position by platform and by currency
-	currentBalanceByPlatformByCurrency map[string]map[string]float64 // current balance updated after each run
+	quitChannel                        chan bool                      // quit goroutine when program exit
+	config                             *Config                        // config that should be applied with trading algorithm
+	platformApis                       map[string]tradingPlatform.Api // communicate with trading platforms
+	priceRepo                          repository.Price               // use to store and get previous prices
+	positionRepo                       repository.Position            // use to store and get previous positions
+	startTime                          time.Time                      // datetime when lago has been started
+	initialBalanceByPlatformByCurrency map[string]map[string]float64  // initial balance before opening first position by platform and by currency
+	currentBalanceByPlatformByCurrency map[string]map[string]float64  // current balance updated after each run
 }
 
 func NewService(config *Config, platformApis []tradingPlatform.Api, priceRepo repository.Price, positionRepo repository.Position) (Service, error) {
@@ -44,10 +47,14 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, priceRepo re
 		}
 		config = &defaultConfig
 	}
+	platformApisMap := make(map[string]tradingPlatform.Api)
+	for _, platformApi := range platformApis {
+		platformApisMap[platformApi.Name()] = platformApi
+	}
 	return &service{
 		config:                             config,
 		quitChannel:                        make(chan bool),
-		platformApis:                       platformApis,
+		platformApis:                       platformApisMap,
 		priceRepo:                          priceRepo,
 		positionRepo:                       positionRepo,
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
@@ -60,16 +67,19 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, priceRepo re
 func (svc *service) Start() (err error) {
 	svc.startTime = time.Now()
 
-	// Update current balance
+	// Update current balance and set initial balance
 	for _, platform := range svc.platformApis {
 		err = svc.updateWallet(platform.Name())
 		if err != nil {
 			return
 		}
+		for currency, balance := range svc.currentBalanceByPlatformByCurrency[platform.Name()] {
+			if svc.initialBalanceByPlatformByCurrency[platform.Name()] == nil {
+				svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
+			}
+			svc.initialBalanceByPlatformByCurrency[platform.Name()][currency] = balance
+		}
 	}
-
-	// Set initial balance before first run
-	svc.initialBalanceByPlatformByCurrency = svc.currentBalanceByPlatformByCurrency
 
 	// Run algorithm each X ms
 	for range time.Tick(time.Duration(svc.config.DelayBetweenEachRunInMilliSeconds) * time.Millisecond) { // Loop
@@ -151,81 +161,54 @@ func (svc *service) Stop() (err error) {
 }
 
 func (svc *service) applyTradingAlgorithm() (err error) {
-	for _, platform := range svc.platformApis {
-		logger.Infof("-------------------  %s  ------------------------------", platform.Name())
+	logger.Infof("-------------------  New run %s  ------------------------------", time.Now().Format(time.RFC3339))
+	logger.Infof("Current wallet is %v", svc.currentBalanceByPlatformByCurrency)
+	for platformName, platform := range svc.platformApis {
+		logger.Infof("--  %s  --", platformName)
 
 		// update prices for all pairs and platforms
-		err = svc.updatePrices(platform.Name())
+		err = svc.updatePrices(platformName)
 		if err != nil {
 			return
 		}
 
 		// Loop over all pairs to trade
-		for _, pair := range pairsToTradeByPlatform[platform.Name()] {
-			// update wallet for specific platform
-			err = svc.updateWallet(platform.Name())
-			if err != nil {
-				return
-			}
-
+		for _, pair := range pairsToTradeByPlatform[platformName] {
 			// open new position if conditions are ok
 			var shouldOpenPosition bool
-			shouldOpenPosition, err = svc.shouldOpenNewPosition(platform.Name(), pair)
+			shouldOpenPosition, err = svc.shouldOpenNewPosition(platformName, pair)
 			if err != nil {
 				return
 			}
 			if shouldOpenPosition {
-				var amount float64
-				amount, err = svc.getAmountToInvest(platform.Name(), pair)
+				err = svc.openPosition(platformName, pair)
 				if err != nil {
 					return
 				}
-				if amount >= svc.config.MinimumAmountToOpenPosition {
-					var askPrice float64
-					askPrice, err = svc.getAskPrice(platform.Name(), pair)
-					if err != nil {
-						return
-					}
-					openForm := tradingPlatform.OpenPositionForm{
-						Pair:     pair,
-						Amount:   amount,
-						AskPrice: askPrice,
-					}
-					var openView tradingPlatform.OpenPositionView
-					openView, err = platform.OpenPosition(openForm)
-					if err != nil {
-						return
-					}
-					logger.Infof("Opening new position %s for pair %s with ask=%0.2f and amount=%0.2f",
-						openView.PositionID, openForm.Pair, openView.AskPrice, openView.Amount)
-				}
 			}
+		}
 
-			// close positions if condition are ok
-			var openedPositionsView tradingPlatform.GetOpenedPositionsView
-			openedPositionsView, err = platform.GetOpenedPositions()
+		// close positions if condition are ok
+		var openedPositionsView tradingPlatform.GetOpenedPositionsView
+		openedPositionsView, err = platform.GetOpenedPositions()
+		if err != nil {
+			return
+		}
+		for _, openedPosition := range openedPositionsView.Positions {
+			position := Position{
+				ID:           openedPosition.ID,
+				PlatformName: platformName,
+				Amount:       openedPosition.Amount,
+				AskPrice:     openedPosition.AskPrice,
+				Pair:         openedPosition.Pair,
+			}
+			var shouldClosePosition bool
+			shouldClosePosition, err = svc.shouldClosePosition(position)
 			if err != nil {
 				return
 			}
-			for _, openedPosition := range openedPositionsView.Positions {
-				position := Position{
-					ID:       openedPosition.ID,
-					Amount:   openedPosition.Amount,
-					AskPrice: openedPosition.AskPrice,
-				}
-				var shouldClosePosition bool
-				shouldClosePosition, err = svc.shouldClosePosition(position)
-				if err != nil {
-					return
-				}
-				if shouldClosePosition {
-					closeForm := tradingPlatform.ClosePositionForm{PositionID: position.ID}
-					var closeView tradingPlatform.ClosePositionView
-					closeView, err = platform.ClosePosition(closeForm)
-					resultInPercent := tradingUtils.GetResultInPercent(closeView.AskPrice, closeView.BidPrice, position.Amount)
-					logger.Infof("Closing position %s make profit of %0.2f (%0.2f%%) with ask=%0.2f bid=%0.2f and amount=%0.2f",
-						position.ID, closeView.Profit, resultInPercent, closeView.AskPrice, closeView.BidPrice, position.Amount)
-				}
+			if shouldClosePosition {
+				err = svc.closePosition(position)
 			}
 		}
 	}
@@ -233,6 +216,15 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) shouldOpenNewPosition(platformName string, pair string) (shouldOpen bool, err error) {
+	// If too many positions has been opened for this platform/pair, don't open new one
+	openedPositions, err := svc.positionRepo.GetOpenedPositions(platformName, pair)
+	if err != nil {
+		return
+	}
+	if len(openedPositions) >= svc.config.MaxOpenedPositionsByPair {
+		return false, nil
+	}
+
 	// Getting last prices for current pair
 	lastPrices, err := svc.priceRepo.GetLast(platformName, svc.config.NumberOfPreviousPricesToCompare, pair)
 	if err != nil {
@@ -259,7 +251,11 @@ func (svc *service) shouldOpenNewPosition(platformName string, pair string) (sho
 }
 
 func (svc *service) shouldClosePosition(position Position) (shouldClose bool, err error) {
-	estimatedResultInPercent := tradingUtils.GetResultInPercent(position.AskPrice, position.BidPrice, position.Amount)
+	bidPrice, err := svc.getBidPrice(position.PlatformName, position.Pair)
+	if err != nil {
+		return
+	}
+	estimatedResultInPercent := tradingUtils.GetResultInPercent(position.AskPrice, bidPrice, position.Amount)
 	if estimatedResultInPercent >= svc.config.MinimumResultInPercentToClosePosition {
 		shouldClose = true
 	}
@@ -267,58 +263,56 @@ func (svc *service) shouldClosePosition(position Position) (shouldClose bool, er
 }
 
 func (svc *service) updateWallet(platformName string) (err error) {
-	for _, platform := range svc.platformApis {
-		if platform.Name() != platformName {
-			continue // update only wallet for specified platform
+	platform, ok := svc.platformApis[platformName]
+	if !ok {
+		return errPlatformNotFound
+	}
+	var walletView tradingPlatform.WalletView
+	walletView, err = platform.GetWalletBalance()
+	if err != nil {
+		return
+	}
+	for currency, balance := range walletView.BalanceByCurrency {
+		if svc.currentBalanceByPlatformByCurrency[platform.Name()] == nil {
+			svc.currentBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
 		}
-		var walletView tradingPlatform.WalletView
-		walletView, err = platform.GetWalletBalance()
-		if err != nil {
-			return
-		}
-		for currency, balance := range walletView.BalanceByCurrency {
-			if svc.currentBalanceByPlatformByCurrency[platform.Name()] == nil {
-				svc.currentBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
-			}
-			svc.currentBalanceByPlatformByCurrency[platform.Name()][currency] = balance
-		}
+		svc.currentBalanceByPlatformByCurrency[platform.Name()][currency] = balance
 	}
 	logger.Infof("Current wallet is %v", svc.currentBalanceByPlatformByCurrency)
 	return
 }
 
 func (svc *service) updatePrices(platformName string) (err error) {
-	for _, platform := range svc.platformApis {
-		if platform.Name() != platformName {
-			continue // update prices only for specified platform
+	platform, ok := svc.platformApis[platformName]
+	if !ok {
+		return errPlatformNotFound
+	}
+	pairsToTrade, ok := pairsToTradeByPlatform[platformName]
+	if !ok {
+		return errPairNotFound
+	}
+	priceForm := tradingPlatform.GetPriceForm{
+		Pairs: pairsToTrade,
+	}
+	var priceView tradingPlatform.GetPriceView
+	priceView, err = platform.GetPrice(priceForm)
+	if err != nil {
+		return
+	}
+	for pair, price := range priceView.PriceByPair {
+		// Store new prices (use after to know if new open position should be opened
+		priceModel := repositoryModel.Price{
+			Date:         price.Date,
+			Pair:         pair,
+			AskPrice:     price.AskPrice,
+			BidPrice:     price.BidPrice,
+			PlatformName: platform.Name(),
 		}
-		pairsToTrade, ok := pairsToTradeByPlatform[platform.Name()]
-		if !ok {
-			return errPairNotFound
-		}
-		priceForm := tradingPlatform.GetPriceForm{
-			Pairs: pairsToTrade,
-		}
-		var priceView tradingPlatform.GetPriceView
-		priceView, err = platform.GetPrice(priceForm)
+		err = svc.priceRepo.Store(&priceModel)
 		if err != nil {
 			return
 		}
-		for pair, price := range priceView.PriceByPair {
-			// Store new prices (use after to know if new open position should be opened
-			priceModel := repositoryModel.Price{
-				Date:         price.Date,
-				Pair:         pair,
-				AskPrice:     price.AskPrice,
-				BidPrice:     price.BidPrice,
-				PlatformName: platform.Name(),
-			}
-			err = svc.priceRepo.Store(&priceModel)
-			if err != nil {
-				return
-			}
-			logger.Infof("%s price is ask=%0.2f and bid=%0.2f", pair, price.AskPrice, price.BidPrice)
-		}
+		logger.Infof("%s price is ask=%0.2f and bid=%0.2f", pair, price.AskPrice, price.BidPrice)
 	}
 	return
 }
@@ -329,10 +323,13 @@ func (svc *service) getAmountToInvest(platformName string, pair string) (amount 
 	if err != nil {
 		return
 	}
-	var nbOpenedPositionsForPair int
+	var nbOpenedPositionsForPair, nbOpenedPositionsForPlatform int
 	for _, openedPosition := range openedPositions {
-		if openedPosition.Pair == pair {
-			nbOpenedPositionsForPair++
+		if openedPosition.PlatformName == platformName {
+			nbOpenedPositionsForPlatform++
+			if openedPosition.Pair == pair {
+				nbOpenedPositionsForPair++
+			}
 		}
 	}
 	if nbOpenedPositionsForPair == svc.config.MaxOpenedPositionsByPair {
@@ -356,7 +353,7 @@ func (svc *service) getAmountToInvest(platformName string, pair string) (amount 
 	}
 
 	// Calculate amount to invest
-	amount = currentBalance / float64(len(pairsToTradeByPlatform)*svc.config.MaxOpenedPositionsByPair-nbOpenedPositionsForPair)
+	amount = currentBalance / float64(len(pairsToTradeByPlatform[platformName])*svc.config.MaxOpenedPositionsByPair-nbOpenedPositionsForPlatform)
 	return
 }
 
@@ -366,6 +363,121 @@ func (svc *service) getAskPrice(platformName string, pair string) (askPrice floa
 	if err != nil {
 		return
 	}
+	if lastPrice == nil {
+		return askPrice, errPriceNotFound
+	}
 	askPrice = lastPrice.AskPrice
+	return
+}
+
+func (svc *service) getBidPrice(platformName string, pair string) (bidPrice float64, err error) {
+	var lastPrice *repositoryModel.Price
+	lastPrice, err = svc.priceRepo.GetCurrentPrice(platformName, pair)
+	if err != nil {
+		return
+	}
+	if lastPrice == nil {
+		return bidPrice, errPriceNotFound
+	}
+	bidPrice = lastPrice.BidPrice
+	return
+}
+
+func (svc *service) openPosition(platformName string, pair string) (err error) {
+	// Get amount to invest in new position
+	var amount float64
+	amount, err = svc.getAmountToInvest(platformName, pair)
+	if err != nil {
+		return
+	}
+
+	// open only if amount is more than minimum defined in config
+	if amount >= svc.config.MinimumAmountToOpenPosition {
+		// get ask price
+		var askPrice float64
+		askPrice, err = svc.getAskPrice(platformName, pair)
+		if err != nil {
+			return
+		}
+		platform, ok := svc.platformApis[platformName]
+		if !ok {
+			return errPlatformNotFound
+		}
+		openForm := tradingPlatform.OpenPositionForm{
+			Pair:     pair,
+			Amount:   amount,
+			AskPrice: askPrice,
+		}
+		var openView tradingPlatform.OpenPositionView
+		openView, err = platform.OpenPosition(openForm)
+		if err != nil {
+			return
+		}
+		logger.Infof("Opening new position %s for pair %s with ask=%0.2f and amount=%0.2f",
+			openView.PositionID, openForm.Pair, openView.AskPrice, openView.Amount)
+
+		// Store position in repo for KPI
+		expectedBidPrice := (1 + svc.config.MinimumResultInPercentToClosePosition/100) * openView.AskPrice
+		position := repositoryModel.Position{
+			ID:           openView.PositionID,
+			PlatformName: platformName,
+			AskDate:      time.Now(),
+			//BidDate:      time.Time{},
+			Pair:     openForm.Pair,
+			Amount:   openView.Amount,
+			AskPrice: openView.AskPrice,
+			//BidPrice:     0,
+			//Result:       0,
+			ExpectedBidPrice: expectedBidPrice,
+			Closed:           false,
+		}
+		err = svc.positionRepo.Store(&position)
+		if err != nil {
+			return
+		}
+
+		// When position has been opened, wallet should be updated
+		err = svc.updateWallet(platformName)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (svc *service) closePosition(position Position) (err error) {
+	closeForm := tradingPlatform.ClosePositionForm{
+		PositionID: position.ID,
+	}
+	var closeView tradingPlatform.ClosePositionView
+	platform, ok := svc.platformApis[position.PlatformName]
+	if !ok {
+		return errPlatformNotFound
+	}
+	closeView, err = platform.ClosePosition(closeForm)
+	resultInPercent := tradingUtils.GetResultInPercent(closeView.AskPrice, closeView.BidPrice, position.Amount)
+	logger.Infof("Closing position %s make profit of %0.2f (%0.2f%%) with ask=%0.2f bid=%0.2f and amount=%0.2f",
+		position.ID, closeView.Profit, resultInPercent, closeView.AskPrice, closeView.BidPrice, position.Amount)
+
+	// When position has been closed, wallet should be updated
+	err = svc.updateWallet(position.PlatformName)
+	if err != nil {
+		return
+	}
+
+	// Update position from repo, useful for KPI
+	positionToUpdate, err := svc.positionRepo.Get(position.ID)
+	if err != nil {
+		return
+	}
+	positionToUpdate.BidPrice = closeView.BidPrice
+	positionToUpdate.BidDate = time.Now()
+	positionToUpdate.Closed = true
+	positionToUpdate.Result = tradingUtils.GetResult(closeView.AskPrice, closeView.BidPrice, position.Amount)
+	err = svc.positionRepo.Store(positionToUpdate)
+	if err != nil {
+		return
+	}
+
 	return
 }

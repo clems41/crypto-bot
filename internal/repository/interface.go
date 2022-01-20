@@ -11,5 +11,5 @@ type Price interface {
 type Position interface {
 	Store(position *repositoryModel.Position) (err error)
 	Get(positionID string) (position *repositoryModel.Position, err error)
-	GetOpenedPositions(platformName string) (positions []*repositoryModel.Position, err error)
+	GetOpenedPositions(platformName string, pairs ...string) (positions []*repositoryModel.Position, err error)
 }

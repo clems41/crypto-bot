@@ -213,6 +213,5 @@ func (api *api) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatfor
 		}
 		view.PriceByPair[pair] = price
 	}
-
 	return
 }
