@@ -88,9 +88,10 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 	if !ok {
 		return view, tradingPlatform.ErrPairNotFound
 	}
+	amountAfterFees := form.Amount * (1 - fakeFeesInPercent/100) // trading platform always keep little percent of invest
 	position := tradingPlatform.PositionView{
 		ID:       positionID,
-		Amount:   form.Amount * (1 - fakeFeesInPercent/100), // trading platform always keep little percent of invest
+		Amount:   amountAfterFees,
 		Pair:     form.Pair,
 		AskPrice: price.AskPrice,
 		Closed:   false,
@@ -101,7 +102,11 @@ func (api *api) OpenPosition(form tradingPlatform.OpenPositionForm) (view tradin
 
 	// Update wallet balance
 	api.balanceByCurrency[currency] = balance - form.Amount
-	view = tradingPlatform.OpenPositionView{PositionID: positionID}
+	view = tradingPlatform.OpenPositionView{
+		PositionID: positionID,
+		Amount:     amountAfterFees,
+		AskPrice:   price.AskPrice,
+	}
 	return
 }
 

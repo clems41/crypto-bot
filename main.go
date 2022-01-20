@@ -32,12 +32,16 @@ func main() {
 	}
 
 	// Run trading algorithm
-	tradingService := trading.NewService(
+	tradingService, err := trading.NewService(
+		nil, // used default config or from env
 		[]tradingPlatform.Api{
 			krakenApi,
 		},
 		priceRepo,
 		positionRepo)
+	if err != nil {
+		logger.Fatal(err)
+	}
 	go func() {
 		err = tradingService.Start()
 		if err != nil {

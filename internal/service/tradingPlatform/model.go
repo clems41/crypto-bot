@@ -44,6 +44,8 @@ type GetAllPositionsView struct {
 
 type OpenPositionView struct {
 	PositionID string
+	Amount     float64
+	AskPrice   float64
 }
 
 type ClosePositionView struct {
