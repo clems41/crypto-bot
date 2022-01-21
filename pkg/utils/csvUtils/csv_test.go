@@ -89,21 +89,41 @@ func TestAppendLines(t *testing.T) {
 	file, err := os.Create(filePath)
 	assert.NoError(t, err)
 
-	// appending lines
-	lines := [][]string{
+	// appending first lines
+	firstLines := [][]string{
 		{fake.Word(), fake.Word()},
 		{fake.Word(), fake.Word()},
 	}
-	err = AppendLines(filePath, lines...)
+	err = AppendLines(filePath, firstLines...)
 	assert.NoError(t, err)
 
-	// check that file is not empty and contains data
+	// check that file is not empty and contains firstLines
 	stat, err := file.Stat()
 	assert.NoError(t, err)
 	assert.NotEqual(t, int64(0), stat.Size())
 	input, err := ioutil.ReadFile(filePath)
 	assert.NoError(t, err)
-	for _, line := range lines {
+	for _, line := range firstLines {
+		for _, word := range line {
+			assert.True(t, strings.Contains(string(input), word))
+		}
+	}
+
+	// appending second lines
+	secondLines := [][]string{
+		{fake.Word(), fake.Word()},
+		{fake.Word(), fake.Word()},
+	}
+	err = AppendLines(filePath, secondLines...)
+	assert.NoError(t, err)
+
+	// check that file contains firstLines and secondLines
+	stat, err = file.Stat()
+	assert.NoError(t, err)
+	assert.NotEqual(t, int64(0), stat.Size())
+	input, err = ioutil.ReadFile(filePath)
+	assert.NoError(t, err)
+	for _, line := range secondLines {
 		for _, word := range line {
 			assert.True(t, strings.Contains(string(input), word))
 		}
