@@ -1,6 +1,7 @@
 package csvUtils
 
 import (
+	"encoding/csv"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -55,33 +56,22 @@ func ForceCreateFile(filePath string) (err error) {
 
 // AppendLines will append all given line in file. One line is a string array (columns)
 func AppendLines(filePath string, lines ...[]string) (err error) {
-
-	// opening file
-	input, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// creating lineStr, with all cell separated with coma
-	var linesStr []string
-	for _, line := range lines {
-		linesStr = append(linesStr, strings.Join(line, ","))
-	}
-
-	// update file
-	data := strings.Join(linesStr, "\n") + "\n"
-	output := string(input) + data
-	err = ioutil.WriteFile(filePath, []byte(output), 0644)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
 		return
 	}
+	csvWriter := csv.NewWriter(file)
+	err = csvWriter.WriteAll(lines)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
 // UpdateLineOrAppend will check if line already exists in file using matchingString (can be ID for example).
 // If exists, line will be updated, if not, line will be appended in file.
 func UpdateLineOrAppend(filePath string, matchingString string, newLine []string) (err error) {
-
 	// opening file
 	input, err := ioutil.ReadFile(filePath)
 	if err != nil {
