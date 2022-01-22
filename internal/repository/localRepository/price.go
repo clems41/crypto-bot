@@ -62,6 +62,9 @@ func (repo *priceRepo) GetMinimumAskPriceForNValues(platformName string, pair st
 	if !ok {
 		return minimum, repository.ErrPairNotFound
 	}
+	if nbValues > len(prices) {
+		return minimum, repository.ErrNbValuesTooLarge
+	}
 
 	// Find minimum ask price among n values
 	minimum = prices[len(prices)-1].Ask
