@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"crypto-bot/internal/domain/trading"
 	"crypto-bot/internal/repository/localRepository"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/internal/service/tradingPlatform/krakenApi"
 	"crypto-bot/pkg/logger"
+	"google.golang.org/api/sheets/v4"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,11 +24,15 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	priceRepo, err := localRepository.NewPriceRepository()
+	googleSheetService, err := sheets.NewService(context.Background())
 	if err != nil {
 		logger.Fatal(err)
 	}
-	positionRepo, err := localRepository.NewPositionRepository()
+	priceRepo, err := localRepository.NewPriceRepository(googleSheetService)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	positionRepo, err := localRepository.NewPositionRepository(googleSheetService)
 	if err != nil {
 		logger.Fatal(err)
 	}

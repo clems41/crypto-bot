@@ -34,3 +34,4 @@ coverage-report.html
 
 # Generated file using local storage
 *.csv
+google_credentials.json

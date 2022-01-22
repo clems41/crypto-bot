@@ -6,17 +6,19 @@ import (
 	"crypto-bot/pkg/utils/csvUtils"
 	"crypto-bot/pkg/utils/pathUtils"
 	"fmt"
+	"google.golang.org/api/sheets/v4"
 	"time"
 )
 
 var _ repository.Price = (*priceRepo)(nil)
 
 type priceRepo struct {
-	prices      map[string]map[string][]*repositoryModel.Price // store all prices by platform and by pair
-	csvFilePath string
+	prices             map[string]map[string][]*repositoryModel.Price // store all prices by platform and by pair
+	csvFilePath        string
+	googleSheetService *sheets.Service
 }
 
-func NewPriceRepository() (repo *priceRepo, err error) {
+func NewPriceRepository(googleSheetService *sheets.Service) (repo *priceRepo, err error) {
 	rootPath, err := pathUtils.GetRootProjectPath()
 	if err != nil {
 		return
@@ -43,8 +45,9 @@ func NewPriceRepository() (repo *priceRepo, err error) {
 	}
 
 	repo = &priceRepo{
-		prices:      make(map[string]map[string][]*repositoryModel.Price),
-		csvFilePath: csvPath,
+		prices:             make(map[string]map[string][]*repositoryModel.Price),
+		csvFilePath:        csvPath,
+		googleSheetService: googleSheetService,
 	}
 	return
 }
@@ -96,6 +99,24 @@ func (repo *priceRepo) Store(price *repositoryModel.Price) (err error) {
 
 	// update line or append it if not exists
 	err = csvUtils.AppendLines(repo.csvFilePath, newLine)
+	if err != nil {
+		return
+	}
+
+	// append new line in google spreadsheet
+	valueRange := sheets.ValueRange{
+		Values: [][]interface{}{
+			{
+				price.Date,
+				price.PlatformName,
+				price.Pair,
+				price.Ask,
+				price.Bid,
+			},
+		},
+	}
+	request := repo.googleSheetService.Spreadsheets.Values.Append(googleSpreadsheetID, priceRangeUpdate, &valueRange)
+	_, err = request.Do()
 	if err != nil {
 		return
 	}
