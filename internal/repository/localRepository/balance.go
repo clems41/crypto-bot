@@ -3,47 +3,21 @@ package localRepository
 import (
 	"crypto-bot/internal/repository"
 	"crypto-bot/internal/repository/repositoryModel"
-	"crypto-bot/pkg/utils/csvUtils"
-	"crypto-bot/pkg/utils/pathUtils"
-	"fmt"
+	"google.golang.org/api/sheets/v4"
 	"time"
 )
 
 var _ repository.Balance = (*balanceRepo)(nil)
 
 type balanceRepo struct {
-	balances    map[string]map[string]*repositoryModel.Balance // store all balance by platform and currency
-	csvFilePath string
+	balances           map[string]map[string]*repositoryModel.Balance // store all balance by platform and currency
+	googleSheetService *sheets.Service
 }
 
-func NewBalanceRepository() (repo *balanceRepo, err error) {
-	rootPath, err := pathUtils.GetRootProjectPath()
-	if err != nil {
-		return
-	}
-	csvPath := fmt.Sprintf("%s/%s", rootPath, csvFileNameBalance)
-
-	// empty file or creating new one
-	err = csvUtils.ForceCreateFile(csvPath)
-	if err != nil {
-		return
-	}
-
-	// adding column names
-	columnNames := []string{
-		"PlatformName",
-		"Currency",
-		"Value",
-		"UpdatedAt",
-	}
-	err = csvUtils.AppendLines(csvPath, columnNames)
-	if err != nil {
-		return
-	}
-
+func NewBalanceRepository(googleSheetService *sheets.Service) (repo *balanceRepo, err error) {
 	repo = &balanceRepo{
-		balances:    make(map[string]map[string]*repositoryModel.Balance),
-		csvFilePath: csvPath,
+		balances:           make(map[string]map[string]*repositoryModel.Balance),
+		googleSheetService: googleSheetService,
 	}
 	return
 }
@@ -57,17 +31,21 @@ func (repo *balanceRepo) Update(balance *repositoryModel.Balance) (err error) {
 		repo.balances[balance.PlatformName][balance.Currency] = balance
 	}
 
-	// update csv line
-	newLine := []string{
-		balance.PlatformName,
-		balance.Currency,
-		fmt.Sprintf("%0.2f", balance.Value),
-		balance.UpdatedAt.Format(time.RFC3339),
+	// append new line in google spreadsheet
+	valueRange := sheets.ValueRange{
+		Values: [][]interface{}{
+			{
+				balance.PlatformName,
+				balance.Currency,
+				balance.Value,
+				balance.UpdatedAt.Format(time.RFC3339),
+			},
+		},
 	}
-
-	// update line or append it if not exists
-	matchingString := fmt.Sprintf("%s,%s", balance.PlatformName, balance.Currency)
-	err = csvUtils.UpdateLineOrAppend(repo.csvFilePath, matchingString, newLine)
+	request := repo.googleSheetService.Spreadsheets.Values.
+		Append(googleSpreadsheetID, balanceRangeUpdate, &valueRange).
+		ValueInputOption("RAW")
+	_, err = request.Do()
 	if err != nil {
 		return
 	}

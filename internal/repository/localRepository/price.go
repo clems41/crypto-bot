@@ -3,9 +3,6 @@ package localRepository
 import (
 	"crypto-bot/internal/repository"
 	"crypto-bot/internal/repository/repositoryModel"
-	"crypto-bot/pkg/utils/csvUtils"
-	"crypto-bot/pkg/utils/pathUtils"
-	"fmt"
 	"google.golang.org/api/sheets/v4"
 	"time"
 )
@@ -14,39 +11,12 @@ var _ repository.Price = (*priceRepo)(nil)
 
 type priceRepo struct {
 	prices             map[string]map[string][]*repositoryModel.Price // store all prices by platform and by pair
-	csvFilePath        string
 	googleSheetService *sheets.Service
 }
 
 func NewPriceRepository(googleSheetService *sheets.Service) (repo *priceRepo, err error) {
-	rootPath, err := pathUtils.GetRootProjectPath()
-	if err != nil {
-		return
-	}
-	csvPath := fmt.Sprintf("%s/%s", rootPath, csvFileNamePrice)
-
-	// empty file or creating new one
-	err = csvUtils.ForceCreateFile(csvPath)
-	if err != nil {
-		return
-	}
-
-	// adding column names
-	columnNames := []string{
-		"Date",
-		"PlatformName",
-		"Pair",
-		"Ask",
-		"Bid",
-	}
-	err = csvUtils.AppendLines(csvPath, columnNames)
-	if err != nil {
-		return
-	}
-
 	repo = &priceRepo{
 		prices:             make(map[string]map[string][]*repositoryModel.Price),
-		csvFilePath:        csvPath,
 		googleSheetService: googleSheetService,
 	}
 	return
@@ -88,26 +58,11 @@ func (repo *priceRepo) Store(price *repositoryModel.Price) (err error) {
 	}
 	repo.prices[price.PlatformName][price.Pair] = append(repo.prices[price.PlatformName][price.Pair], price)
 
-	// creating new csv line
-	newLine := []string{
-		price.Date.Format(time.RFC3339),
-		price.PlatformName,
-		price.Pair,
-		fmt.Sprintf("%0.2f", price.Ask),
-		fmt.Sprintf("%0.2f", price.Bid),
-	}
-
-	// update line or append it if not exists
-	err = csvUtils.AppendLines(repo.csvFilePath, newLine)
-	if err != nil {
-		return
-	}
-
 	// append new line in google spreadsheet
 	valueRange := sheets.ValueRange{
 		Values: [][]interface{}{
 			{
-				price.Date,
+				price.Date.Format(time.RFC3339),
 				price.PlatformName,
 				price.Pair,
 				price.Ask,
@@ -115,7 +70,9 @@ func (repo *priceRepo) Store(price *repositoryModel.Price) (err error) {
 			},
 		},
 	}
-	request := repo.googleSheetService.Spreadsheets.Values.Append(googleSpreadsheetID, priceRangeUpdate, &valueRange)
+	request := repo.googleSheetService.Spreadsheets.Values.
+		Append(googleSpreadsheetID, priceRangeUpdate, &valueRange).
+		ValueInputOption("RAW")
 	_, err = request.Do()
 	if err != nil {
 		return
