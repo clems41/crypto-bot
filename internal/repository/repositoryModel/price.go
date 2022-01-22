@@ -6,6 +6,6 @@ type Price struct {
 	Date         time.Time
 	PlatformName string
 	Pair         string
-	AskPrice     float64
-	BidPrice     float64
+	Ask          float64
+	Bid          float64
 }

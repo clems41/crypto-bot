@@ -16,7 +16,7 @@ func TestPriceRepo_GetAndStore(t *testing.T) {
 	platformName := fake.Word()
 
 	// try to get last prices without storing any, should return error
-	prices, err := repo.GetLast(platformName, 1, pair)
+	_, err = repo.GetMinimumAskPriceForNValues(platformName, pair, 1)
 	require.Error(t, err)
 
 	// Store some prices with correct pair, and should get them all
@@ -26,8 +26,8 @@ func TestPriceRepo_GetAndStore(t *testing.T) {
 			PlatformName: platformName,
 			Date:         time.Now(),
 			Pair:         pair,
-			AskPrice:     float64(fakeData.FakeIntBetween(1, 10000)),
-			BidPrice:     float64(fakeData.FakeIntBetween(1, 10000)),
+			Ask:          float64(fakeData.FakeIntBetween(1, 10000)),
+			Bid:          float64(fakeData.FakeIntBetween(1, 10000)),
 		}
 		err = repo.Store(&price)
 		require.NoError(t, err)
@@ -38,10 +38,10 @@ func TestPriceRepo_GetAndStore(t *testing.T) {
 	var incorrectCurrencyPrices []repositoryModel.Price
 	for range fakeData.FakeRange(5, 15) {
 		price := repositoryModel.Price{
-			Date:     time.Now(),
-			Pair:     fake.Word(),
-			AskPrice: float64(fakeData.FakeIntBetween(10000, 100000)),
-			BidPrice: float64(fakeData.FakeIntBetween(10000, 100000)),
+			Date: time.Now(),
+			Pair: fake.Word(),
+			Ask:  float64(fakeData.FakeIntBetween(10000, 100000)),
+			Bid:  float64(fakeData.FakeIntBetween(10000, 100000)),
 		}
 		err = repo.Store(&price)
 		require.NoError(t, err)
@@ -49,14 +49,8 @@ func TestPriceRepo_GetAndStore(t *testing.T) {
 	}
 
 	// Get all correct pair prices
-	prices, err = repo.GetLast(platformName, len(currencyPrices), pair)
+	minimumAskPrice, err := repo.GetMinimumAskPriceForNValues(platformName, pair, len(currencyPrices))
 	require.NoError(t, err)
-	require.Len(t, prices, len(currencyPrices))
-	for _, price := range prices {
-		require.Equal(t, pair, price.Pair)
-		require.True(t, price.AskPrice > 1 && price.AskPrice < 10000,
-			"Bitcoin ask price should be between 1 and 10 000 / unit but it is %0.2f", price.AskPrice)
-		require.True(t, price.BidPrice > 1 && price.BidPrice < 10000,
-			"Bitcoin bid price should be between 1 and 10 000 / unit but it is %0.2f", price.BidPrice)
-	}
+	require.True(t, minimumAskPrice > 1 && minimumAskPrice < 10000,
+		"Minimum ask price should be between 1 and 10 000 / unit but it is %0.2f", minimumAskPrice)
 }

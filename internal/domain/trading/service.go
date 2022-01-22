@@ -225,26 +225,18 @@ func (svc *service) shouldOpenNewPosition(platformName string, pair string) (sho
 		return false, nil
 	}
 
-	// Getting last prices for current pair
-	lastPrices, err := svc.priceRepo.GetLast(platformName, svc.config.NumberOfPreviousPricesToCompare, pair)
+	// Find minimum ask price from last NumberOfPreviousPricesToCompare values
+	minimumAskPrice, err := svc.priceRepo.GetMinimumAskPriceForNValues(platformName, pair, svc.config.NumberOfPreviousPricesToCompare)
 	if err != nil {
 		return
 	}
-	if len(lastPrices) < svc.config.NumberOfPreviousPricesToCompare {
-		return false, errPriceNotFound
-	}
 
-	// Find minimum value from last prices
-	minimumPrice := lastPrices[0].AskPrice
-	for _, price := range lastPrices {
-		if price.AskPrice < minimumPrice {
-			minimumPrice = price.AskPrice
-		}
+	// Position should be opened if current price is lower or equal than minimum
+	currentPrice, err := svc.priceRepo.GetCurrentPrice(platformName, pair)
+	if err != nil {
+		return
 	}
-
-	// Position should be opened if last price is the lowest of all last 10 prices
-	lastPrice := lastPrices[len(lastPrices)-1]
-	if minimumPrice == lastPrice.AskPrice {
+	if minimumAskPrice >= currentPrice.Ask {
 		shouldOpen = true
 	}
 	return
@@ -304,8 +296,8 @@ func (svc *service) updatePrices(platformName string) (err error) {
 		priceModel := repositoryModel.Price{
 			Date:         price.Date,
 			Pair:         pair,
-			AskPrice:     price.AskPrice,
-			BidPrice:     price.BidPrice,
+			Ask:          price.AskPrice,
+			Bid:          price.BidPrice,
 			PlatformName: platform.Name(),
 		}
 		err = svc.priceRepo.Store(&priceModel)
@@ -366,7 +358,7 @@ func (svc *service) getAskPrice(platformName string, pair string) (askPrice floa
 	if lastPrice == nil {
 		return askPrice, errPriceNotFound
 	}
-	askPrice = lastPrice.AskPrice
+	askPrice = lastPrice.Ask
 	return
 }
 
@@ -379,7 +371,7 @@ func (svc *service) getBidPrice(platformName string, pair string) (bidPrice floa
 	if lastPrice == nil {
 		return bidPrice, errPriceNotFound
 	}
-	bidPrice = lastPrice.BidPrice
+	bidPrice = lastPrice.Bid
 	return
 }
 
@@ -426,7 +418,7 @@ func (svc *service) openPosition(platformName string, pair string) (err error) {
 			Pair:     openForm.Pair,
 			Amount:   openView.Amount,
 			AskPrice: openView.AskPrice,
-			//BidPrice:     0,
+			//Bid:     0,
 			//Result:       0,
 			ExpectedBidPrice: expectedBidPrice,
 			Closed:           false,

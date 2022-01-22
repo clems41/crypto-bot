@@ -96,7 +96,7 @@ func (mock *mock) ClosePosition(form tradingPlatform.ClosePositionForm) (view tr
 
 	// calculate profit
 	askPrice := position.AskPrice
-	bidPrice := mock.dataset[mock.actualDatasetIndex].BidPrice
+	bidPrice := mock.dataset[mock.actualDatasetIndex].Bid
 	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
 	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
 	position.Result = result
@@ -125,8 +125,8 @@ func (mock *mock) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatf
 	view.PriceByPair = make(map[string]tradingPlatform.PriceView)
 	for _, pair := range form.Pairs {
 		view.PriceByPair[pair] = tradingPlatform.PriceView{
-			AskPrice: price.AskPrice,
-			BidPrice: price.BidPrice,
+			AskPrice: price.Ask,
+			BidPrice: price.Bid,
 			Date:     price.Date,
 		}
 	}

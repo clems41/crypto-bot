@@ -3,7 +3,8 @@ package repository
 import "crypto-bot/internal/repository/repositoryModel"
 
 type Price interface {
-	GetLast(platformName string, nbElement int, pair string) (prices []*repositoryModel.Price, err error)
+	// GetMinimumAskPriceForNValues will return minimum price.Ask
+	GetMinimumAskPriceForNValues(platformName string, pair string, nbValues int) (minimum float64, err error)
 	GetCurrentPrice(platformName string, pair string) (price *repositoryModel.Price, err error)
 	Store(price *repositoryModel.Price) (err error)
 }

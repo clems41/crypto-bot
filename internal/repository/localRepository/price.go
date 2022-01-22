@@ -34,8 +34,8 @@ func NewPriceRepository() (repo *priceRepo, err error) {
 		"Date",
 		"PlatformName",
 		"Pair",
-		"AskPrice",
-		"BidPrice",
+		"Ask",
+		"Bid",
 	}
 	err = csvUtils.AppendLines(csvPath, columnNames)
 	if err != nil {
@@ -49,19 +49,28 @@ func NewPriceRepository() (repo *priceRepo, err error) {
 	return
 }
 
-func (repo *priceRepo) GetLast(platformName string, nbElement int, pair string) (result []*repositoryModel.Price, err error) {
+func (repo *priceRepo) GetMinimumAskPriceForNValues(platformName string, pair string, nbValues int) (minimum float64, err error) {
+	if nbValues <= 0 {
+		return minimum, repository.ErrNbValuesCannotBeZero
+	}
+	// Get n prices for specific platform and pair
 	pricesByPair, ok := repo.prices[platformName]
 	if !ok {
-		return nil, repository.ErrPlatformNotFound
+		return minimum, repository.ErrPlatformNotFound
 	}
 	prices, ok := pricesByPair[pair]
 	if !ok {
-		return nil, repository.ErrPairNotFound
+		return minimum, repository.ErrPairNotFound
 	}
-	if len(prices) < nbElement {
-		return nil, repository.ErrNbElementTooLarge
+
+	// Find minimum ask price among n values
+	minimum = prices[len(prices)-1].Ask
+	for _, price := range prices[len(prices)-nbValues:] {
+		if price.Ask < minimum {
+			minimum = price.Ask
+		}
 	}
-	return prices[len(prices)-nbElement:], nil
+	return
 }
 
 func (repo *priceRepo) Store(price *repositoryModel.Price) (err error) {
@@ -78,8 +87,8 @@ func (repo *priceRepo) Store(price *repositoryModel.Price) (err error) {
 		price.Date.Format(time.RFC3339),
 		price.PlatformName,
 		price.Pair,
-		fmt.Sprintf("%0.2f", price.AskPrice),
-		fmt.Sprintf("%0.2f", price.BidPrice),
+		fmt.Sprintf("%0.2f", price.Ask),
+		fmt.Sprintf("%0.2f", price.Bid),
 	}
 
 	// update line or append it if not exists

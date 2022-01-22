@@ -1,4 +1,4 @@
-package kraken
+package krakenApi
 
 import "crypto-bot/internal/service/tradingPlatform"
 
