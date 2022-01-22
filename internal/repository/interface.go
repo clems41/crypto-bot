@@ -14,3 +14,8 @@ type Position interface {
 	Get(positionID string) (position *repositoryModel.Position, err error)
 	GetOpenedPositions(platformName string, pairs ...string) (positions []*repositoryModel.Position, err error)
 }
+
+type Balance interface {
+	Update(balance *repositoryModel.Balance) (err error)
+	GetCurrentBalance(platformName string, currency string) (balance *repositoryModel.Balance, err error)
+}

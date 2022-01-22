@@ -30,6 +30,10 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	balanceRepo, err := localRepository.NewBalanceRepository()
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	// Run trading algorithm
 	tradingService, err := trading.NewService(
@@ -38,7 +42,8 @@ func main() {
 			krakenApi,
 		},
 		priceRepo,
-		positionRepo)
+		positionRepo,
+		balanceRepo)
 	if err != nil {
 		logger.Fatal(err)
 	}

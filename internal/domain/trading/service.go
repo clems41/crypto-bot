@@ -34,12 +34,13 @@ type service struct {
 	platformApis                       map[string]tradingPlatform.Api // communicate with trading platforms
 	priceRepo                          repository.Price               // use to store and get previous prices
 	positionRepo                       repository.Position            // use to store and get previous positions
+	balanceRepo                        repository.Balance             // use to store and get balance
 	startTime                          time.Time                      // datetime when lago has been started
 	initialBalanceByPlatformByCurrency map[string]map[string]float64  // initial balance before opening first position by platform and by currency
-	currentBalanceByPlatformByCurrency map[string]map[string]float64  // current balance updated after each run
 }
 
-func NewService(config *Config, platformApis []tradingPlatform.Api, priceRepo repository.Price, positionRepo repository.Position) (Service, error) {
+func NewService(config *Config, platformApis []tradingPlatform.Api,
+	priceRepo repository.Price, positionRepo repository.Position, balanceRepo repository.Balance) (Service, error) {
 	if config == nil {
 		defaultConfig, err := GetConfigFromEnvOrDefault()
 		if err != nil {
@@ -57,8 +58,8 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, priceRepo re
 		platformApis:                       platformApisMap,
 		priceRepo:                          priceRepo,
 		positionRepo:                       positionRepo,
+		balanceRepo:                        balanceRepo,
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
-		currentBalanceByPlatformByCurrency: make(map[string]map[string]float64),
 	}, nil
 }
 
@@ -67,17 +68,27 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, priceRepo re
 func (svc *service) Start() (err error) {
 	svc.startTime = time.Now()
 
-	// Update current balance and set initial balance
+	// Update current balance
 	for _, platform := range svc.platformApis {
 		err = svc.updateWallet(platform.Name())
 		if err != nil {
 			return
 		}
-		for currency, balance := range svc.currentBalanceByPlatformByCurrency[platform.Name()] {
-			if svc.initialBalanceByPlatformByCurrency[platform.Name()] == nil {
-				svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
+	}
+
+	// Set initial balance, useful to calculate ending profit, result, etc...
+	for platformName, pairs := range pairsToTradeByPlatform {
+		for _, pair := range pairs {
+			currency := tradingUtils.CurrencyNeededToTradePair(pair)
+			var balance *repositoryModel.Balance
+			balance, err = svc.balanceRepo.GetCurrentBalance(platformName, currency)
+			if err != nil {
+				return
 			}
-			svc.initialBalanceByPlatformByCurrency[platform.Name()][currency] = balance
+			if svc.initialBalanceByPlatformByCurrency[platformName] == nil {
+				svc.initialBalanceByPlatformByCurrency[platformName] = make(map[string]float64)
+			}
+			svc.initialBalanceByPlatformByCurrency[platformName][currency] = balance.Value
 		}
 	}
 
@@ -139,17 +150,14 @@ func (svc *service) Stop() (err error) {
 		endTime := time.Now()
 		tradingDuration := endTime.Sub(svc.startTime)
 		var initialBalance, finalBalance float64
-		for currency, balance := range svc.currentBalanceByPlatformByCurrency[platform.Name()] {
-			_, ok := svc.initialBalanceByPlatformByCurrency[platform.Name()]
-			if !ok {
-				return errCurrencyNotInBalance
-			}
-			initialBalanceCurrency, ok := svc.initialBalanceByPlatformByCurrency[platform.Name()][currency]
-			if !ok {
-				return errCurrencyNotInBalance
-			}
+		for currency, initialBalanceCurrency := range svc.initialBalanceByPlatformByCurrency[platform.Name()] {
 			initialBalance += initialBalanceCurrency
-			finalBalance += balance
+			var balance *repositoryModel.Balance
+			balance, err = svc.balanceRepo.GetCurrentBalance(platform.Name(), currency)
+			if err != nil {
+				return
+			}
+			finalBalance += balance.Value
 		}
 		oneDayProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 24*time.Hour)
 		oneMonthProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 30*24*time.Hour)
@@ -162,7 +170,6 @@ func (svc *service) Stop() (err error) {
 
 func (svc *service) applyTradingAlgorithm() (err error) {
 	logger.Infof("-------------------  New run %s  ------------------------------", time.Now().Format(time.RFC3339))
-	logger.Infof("Current wallet is %v", svc.currentBalanceByPlatformByCurrency)
 	for platformName, platform := range svc.platformApis {
 		logger.Infof("--  %s  --", platformName)
 
@@ -264,13 +271,18 @@ func (svc *service) updateWallet(platformName string) (err error) {
 	if err != nil {
 		return
 	}
-	for currency, balance := range walletView.BalanceByCurrency {
-		if svc.currentBalanceByPlatformByCurrency[platform.Name()] == nil {
-			svc.currentBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
+	for currency, value := range walletView.BalanceByCurrency {
+		balance := repositoryModel.Balance{
+			PlatformName: platformName,
+			Currency:     currency,
+			Value:        value,
 		}
-		svc.currentBalanceByPlatformByCurrency[platform.Name()][currency] = balance
+		err = svc.balanceRepo.Update(&balance)
+		if err != nil {
+			return
+		}
+		logger.Infof("Current balance for platform %s and currency %s is %v", platformName, currency, value)
 	}
-	logger.Infof("Current wallet is %v", svc.currentBalanceByPlatformByCurrency)
 	return
 }
 
@@ -339,13 +351,13 @@ func (svc *service) getAmountToInvest(platformName string, pair string) (amount 
 	}
 
 	// Get current balance for currency
-	currentBalance, ok := svc.currentBalanceByPlatformByCurrency[platformName][currency]
-	if !ok {
-		return amount, errCurrencyNotInBalance
+	currentBalance, err := svc.balanceRepo.GetCurrentBalance(platformName, currency)
+	if err != nil {
+		return
 	}
 
 	// Calculate amount to invest
-	amount = currentBalance / float64(len(pairsToTradeByPlatform[platformName])*svc.config.MaxOpenedPositionsByPair-nbOpenedPositionsForPlatform)
+	amount = currentBalance.Value / float64(len(pairsToTradeByPlatform[platformName])*svc.config.MaxOpenedPositionsByPair-nbOpenedPositionsForPlatform)
 	return
 }
 
