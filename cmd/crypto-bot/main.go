@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	balanceRepo, err := localRepository.NewBalanceRepository()
+	balanceRepo, err := localRepository.NewBalanceRepository(googleSheetService)
 	if err != nil {
 		logger.Fatal(err)
 	}
