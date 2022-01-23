@@ -1,4 +1,4 @@
-package trading
+package trader
 
 type Position struct {
 	ID           string

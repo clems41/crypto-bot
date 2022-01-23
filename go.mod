@@ -8,6 +8,7 @@ require (
 	github.com/beldur/kraken-go-api-client v0.0.0-20210512194559-2c29669c4ecc // indirect
 	github.com/corpix/uarand v0.1.1 // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
+	github.com/go-playground/validator/v10 v10.10.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/icrowley/fake v0.0.0-20180203215853-4178557ae428 // indirect

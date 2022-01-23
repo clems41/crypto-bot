@@ -1,7 +1,6 @@
-package trading
+package maxOrMinAlgo
 
 import (
-	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/pkg/utils/envUtils"
 	"strconv"
 )
@@ -22,16 +21,20 @@ const (
 	defaultMinimumAmountToOpenPosition           = "10"
 )
 
-var (
-	pairsToTradeByPlatform = map[string][]string{
-		tradingConst.KrakenPlatform: {
-			tradingConst.BtcEurPair,
-			tradingConst.DashEurPair,
-		},
-	}
-)
+type Config struct {
+	// DelayBetweenEachRun defines delay in milliseconds to wait before running new algorithm iteration
+	DelayBetweenEachRunInMilliSeconds int
+	// MinimumResultInPercentToClosePosition defines minimum result in percent to close position, position will not be closed if actual result is less than this value
+	MinimumResultInPercentToClosePosition float64
+	// NumberOfPreviousPricesToCompare defines number of previous prices to use with opening position algorithm
+	NumberOfPreviousPricesToCompare int
+	// MaxOpenedPositionsByPair defines max number of position that should be opened for specific pair
+	MaxOpenedPositionsByPair int
+	// MinimumAmountToOpenPosition defines minimum value that should be used to open new position, if less than this value position will not be open
+	MinimumAmountToOpenPosition float64
+}
 
-func GetConfigFromEnvOrDefault() (config Config, err error) {
+func GetConfigFromEnvOrDefault() (config *Config, err error) {
 	delayBetweenEachRunInMilliSecondsStr := envUtils.GetFromEnvOrDefault(envDelayBetweenEachRunInMilliSeconds, defaultDelayBetweenEachRunInMilliSeconds)
 	minimumResultInPercentToClosePositionStr := envUtils.GetFromEnvOrDefault(envMinimumResultInPercentToClosePosition, defaultMinimumResultInPercentToClosePosition)
 	numberOfPreviousPricesToCompareStr := envUtils.GetFromEnvOrDefault(envNumberOfPreviousPricesToCompare, defaultNumberOfPreviousPricesToCompare)
@@ -57,13 +60,12 @@ func GetConfigFromEnvOrDefault() (config Config, err error) {
 	if err != nil {
 		return
 	}
-	config = Config{
+	config = &Config{
 		DelayBetweenEachRunInMilliSeconds:     delayBetweenEachRunInMilliSeconds,
 		MinimumResultInPercentToClosePosition: minimumResultInPercentToClosePosition,
 		NumberOfPreviousPricesToCompare:       numberOfPreviousPricesToCompare,
 		MaxOpenedPositionsByPair:              maxOpenedPositionsByPair,
 		MinimumAmountToOpenPosition:           minimumAmountToOpenPosition,
-		PairToTradeByPlatform:                 pairsToTradeByPlatform,
 	}
 	return
 }

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto-bot/internal/domain/trading"
-	"crypto-bot/internal/repository/localRepository"
+	"crypto-bot/internal/domain/trader"
+	"crypto-bot/internal/repository/googleSheetRepository"
 	"crypto-bot/internal/service/tradingPlatform"
-	"crypto-bot/internal/service/tradingPlatform/krakenApi"
+	"crypto-bot/internal/service/tradingPlatform/krakenApiMock"
+	"crypto-bot/internal/service/tradingStrategy/maxOrMinAlgo"
 	"crypto-bot/pkg/logger"
-	"google.golang.org/api/sheets/v4"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,36 +20,27 @@ func main() {
 
 	// Instantiate useful services and repositories
 	//mockTrading, err := tradingPlatformMock.New()
-	krakenApi, err := krakenApi.New()
+	krakenApi, err := krakenApiMock.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
-	googleSheetService, err := sheets.NewService(context.Background())
+	minOrMaxAlgo, err := maxOrMinAlgo.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
-	priceRepo, err := localRepository.NewPriceRepository(googleSheetService)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	positionRepo, err := localRepository.NewPositionRepository(googleSheetService)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	balanceRepo, err := localRepository.NewBalanceRepository(googleSheetService)
+	googleSheetRepo, err := googleSheetRepository.New(context.Background())
 	if err != nil {
 		logger.Fatal(err)
 	}
 
 	// Run trading algorithm
-	tradingService, err := trading.NewService(
+	tradingService, err := trader.NewService(
 		nil, // used default config or from env
 		[]tradingPlatform.Api{
 			krakenApi,
 		},
-		priceRepo,
-		positionRepo,
-		balanceRepo)
+		googleSheetRepo,
+		minOrMaxAlgo)
 	if err != nil {
 		logger.Fatal(err)
 	}

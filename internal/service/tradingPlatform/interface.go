@@ -1,11 +1,15 @@
 package tradingPlatform
 
+import "crypto-bot/internal/model"
+
 type Api interface {
 	Name() (name string)
-	GetOpenedPositions() (view GetOpenedPositionsView, err error)
-	GetAllPositions() (view GetAllPositionsView, err error)
-	GetWalletBalance() (view WalletView, err error)
-	OpenPosition(form OpenPositionForm) (view OpenPositionView, err error)
-	ClosePosition(form ClosePositionForm) (view ClosePositionView, err error)
-	GetPrice(form GetPriceForm) (view GetPriceView, err error)
+	AddOrder(order *model.Order) (err error)
+	CancelOrder(orderID string) (err error)
+	CancelAllOrders() (view CancelAllOrdersView, err error)
+	GetPrices(form GetPriceForm) (prices []*model.Price, err error)
+	GetIndexPrices(pairs ...string) (prices map[string]*model.Price, err error)
+	GetOpenOrders() (orders []*model.Order, err error)
+	GetAllOrders() (orders []*model.Order, err error)
+	GetBalance() (balance *model.Balance, err error)
 }

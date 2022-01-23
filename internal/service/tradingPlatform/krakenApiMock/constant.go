@@ -1,4 +1,4 @@
-package krakenApi
+package krakenApiMock
 
 import (
 	"crypto-bot/internal/constant/tradingConst"
@@ -11,13 +11,16 @@ const (
 )
 
 const (
-	initBalance       = float64(100.0)
-	fakeFeesInPercent = 0.17
+	initBalance = float64(100.0)
+	takerFees   = 0.26
+	makerFees   = 0.16
 )
 
 var (
 	pairConversion = map[string]string{
 		tradingConst.BtcEurPair:  krakenapi.XXBTZEUR,
 		tradingConst.DashEurPair: krakenapi.DASHEUR,
+		tradingConst.BtcUsdPair:  krakenapi.XXBTZUSD,
+		tradingConst.EthEurPair:  krakenapi.XETHZEUR,
 	}
 )

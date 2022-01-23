@@ -1,8 +1,16 @@
 package tradingConst
 
+/* Forex currencies */
+
 const (
-	BtcCurrency      = "BTC"
-	DashCurrency     = "DASH"
 	EuroCurrency     = "EUR"
 	USDollarCurrency = "USD"
+)
+
+/* Crypto currencies */
+
+const (
+	BtcCurrency  = "BTC"
+	DashCurrency = "DASH"
+	EthCurrency  = "ETH"
 )

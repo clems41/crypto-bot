@@ -1,4 +1,4 @@
-package krakenApi
+package krakenApiMock
 
 import (
 	"crypto-bot/internal/constant/tradingConst"
