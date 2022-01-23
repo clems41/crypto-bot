@@ -17,7 +17,16 @@ const (
 )
 
 var (
-	pairConversion = map[string]string{
+	currencyConverter = map[string]string{
+		"ZEUR": tradingConst.EuroCurrency,
+		"DASH": tradingConst.DashCurrency,
+		"XXBT": tradingConst.BtcCurrency,
+		"XETH": tradingConst.EthCurrency,
+	}
+)
+
+var (
+	pairConverter = map[string]string{
 		tradingConst.BtcEurPair:  krakenapi.XXBTZEUR,
 		tradingConst.DashEurPair: krakenapi.DASHEUR,
 		tradingConst.BtcUsdPair:  krakenapi.XXBTZUSD,

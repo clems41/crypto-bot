@@ -15,10 +15,6 @@ type Config struct {
 	MinimumResultInPercentToClosePosition float64
 	// IntervalToComparePricesInMinutes defines duration in minutes to get prices history before making the choice to add new order
 	IntervalToComparePricesInMinutes int
-	// MaxOpenedPositionsByPair defines max number of position that should be opened for specific pair
-	MaxOpenedPositionsByPair int
-	// MinimumAmountToOpenPosition defines minimum value that should be used to open new position, if less than this value position will not be open
-	MinimumAmountToOpenPosition float64
 	// PairToTradeByPlatform defines all pairs that should trade for each platform
 	PairToTradeByPlatform map[string][]string
 }

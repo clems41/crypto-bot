@@ -6,6 +6,9 @@ import (
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/envUtils"
 	krakenClient "github.com/beldur/kraken-go-api-client"
+	"reflect"
+	"strconv"
+	"time"
 )
 
 var _ tradingPlatform.Api = (*krakenApi)(nil)
@@ -44,10 +47,6 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	return
 }
 
-func (api *krakenApi) CancelOrder(orderID string) (err error) {
-	return
-}
-
 func (api *krakenApi) CancelAllOrders() (view tradingPlatform.CancelAllOrdersView, err error) {
 	return
 }
@@ -56,7 +55,53 @@ func (api *krakenApi) GetPrices(form tradingPlatform.GetPricesForm) (prices []*m
 	return
 }
 
-func (api *krakenApi) GetIndexPrices(pairs ...string) (price map[string]*model.Price, err error) {
+func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []*model.Price, err error) {
+	// get response form kraken api
+	var krakenPairs []string
+	for _, pair := range pairs {
+		var krakenPair string
+		krakenPair, err = GetKrakenPair(pair)
+		if err != nil {
+			return
+		}
+		krakenPairs = append(krakenPairs, krakenPair)
+	}
+	response, err := api.client.Ticker(krakenPairs...)
+	if err != nil {
+		return
+	}
+
+	// search required value from response
+	value := reflect.ValueOf(response).Elem()
+	typeOfResponse := value.Type()
+	for i := 0; i < value.NumField(); i++ {
+		pairTickerInfoInterface := value.Field(i).Interface()
+		pairTickerInfo, ok := pairTickerInfoInterface.(krakenClient.PairTickerInfo)
+		if ok && len(pairTickerInfo.Ask) > 0 && len(pairTickerInfo.Bid) > 0 {
+			var pair string
+			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
+			if err != nil {
+				return
+			}
+			var askPrice, bidPrice float64
+			askPrice, err = strconv.ParseFloat(pairTickerInfo.Ask[0], 64)
+			if err != nil {
+				return
+			}
+			bidPrice, err = strconv.ParseFloat(pairTickerInfo.Bid[0], 64)
+			if err != nil {
+				return
+			}
+			prices = append(prices, &model.Price{
+				Date:         time.Now(),
+				PlatformName: api.Name(),
+				Pair:         pair,
+				Ask:          askPrice,
+				Bid:          bidPrice,
+			})
+		}
+	}
+
 	return
 }
 
@@ -68,6 +113,28 @@ func (api *krakenApi) GetAllOrders() (orders []*model.Order, err error) {
 	return
 }
 
-func (api *krakenApi) GetBalance() (balance *model.Balance, err error) {
+func (api *krakenApi) UpdateBalance(balance *model.Balance) (err error) {
+	// get response form kraken api
+	response, err := api.client.Balance()
+	if err != nil {
+		return
+	}
+
+	// search required value from response
+	value := reflect.ValueOf(response).Elem()
+	typeOfResponse := value.Type()
+	for i := 0; i < value.NumField(); i++ {
+		balanceCurrencyInterface := value.Field(i).Interface()
+		balanceCurrency, ok := balanceCurrencyInterface.(float64)
+		if ok {
+			var currency string
+			currency, ok = currencyConverter[typeOfResponse.Field(i).Name]
+			if ok {
+				balance.ValueByCurrency[currency] = balanceCurrency
+			}
+		}
+	}
+
+	balance.UpdatedAt = time.Now()
 	return
 }

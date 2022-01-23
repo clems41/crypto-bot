@@ -8,5 +8,6 @@ var (
 	ErrPositionNotFound            = fmt.Errorf("position not found")
 	ErrEmptyResponse               = fmt.Errorf("response is nil from api")
 	ErrCurrencyNotInWallet         = fmt.Errorf("currency is not in wallet")
+	ErrCannotConvertCurrency       = fmt.Errorf("cannot convert currency")
 	ErrNotEnoughCash               = fmt.Errorf("not enough cash to open position")
 )

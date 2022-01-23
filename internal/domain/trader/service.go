@@ -32,7 +32,7 @@ type service struct {
 	algo                               tradingStrategy.Algo               // use to know if order should be open based on prices
 	startTime                          time.Time                          // datetime when lago has been started
 	initialBalanceByPlatformByCurrency map[string]map[string]float64      // initial balance before opening first position by platform and by currency
-	currentBalanceByPlatformByCurrency map[string]map[string]float64      // current balance
+	balanceByPlatform                  map[string]*model.Balance          // current balance
 	indexPriceByPlatformByPair         map[string]map[string]*model.Price // store last index got from platform
 }
 
@@ -55,7 +55,7 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, repo reposit
 		repo:                               repo,
 		algo:                               algo,
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
-		currentBalanceByPlatformByCurrency: make(map[string]map[string]float64),
+		balanceByPlatform:                  make(map[string]*model.Balance),
 		indexPriceByPlatformByPair:         make(map[string]map[string]*model.Price),
 	}, nil
 }
@@ -65,22 +65,23 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, repo reposit
 func (svc *service) Start() (err error) {
 	svc.startTime = time.Now()
 
-	// Update current balance
-	for _, platform := range svc.platformApis {
-		err = svc.updateBalance(platform)
-		if err != nil {
-			return
+	// init balance
+	for platformName, _ := range svc.platformApis {
+		if svc.balanceByPlatform[platformName] == nil {
+			svc.balanceByPlatform[platformName] = &model.Balance{
+				PlatformName:    platformName,
+				ValueByCurrency: make(map[string]float64),
+			}
 		}
 	}
 
 	// Set initial balance, useful to calculate ending profit, result, etc...
-	for _, platform := range svc.platformApis {
-		var balance *model.Balance
-		balance, err = platform.GetBalance()
+	for platformName, platform := range svc.platformApis {
+		err = platform.UpdateBalance(svc.balanceByPlatform[platformName])
 		if err != nil {
 			return
 		}
-		for currency, value := range balance.ValueByCurrency {
+		for currency, value := range svc.balanceByPlatform[platformName].ValueByCurrency {
 			if svc.initialBalanceByPlatformByCurrency[platform.Name()] == nil {
 				svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
 			}
@@ -98,6 +99,7 @@ func (svc *service) Start() (err error) {
 			err = svc.applyTradingAlgorithm()
 			if err != nil {
 				logger.Error(err)
+				return
 			}
 		}
 	}
@@ -139,7 +141,7 @@ func (svc *service) Stop() (err error) {
 		var initialBalance, finalBalance float64
 		for currency, initialBalanceCurrency := range svc.initialBalanceByPlatformByCurrency[platform.Name()] {
 			initialBalance += initialBalanceCurrency
-			finalBalanceCurrency, ok := svc.currentBalanceByPlatformByCurrency[platformName][currency]
+			finalBalanceCurrency, ok := svc.balanceByPlatform[platformName].ValueByCurrency[currency]
 			if !ok {
 				return errCurrencyNotInBalance
 			}
@@ -173,22 +175,6 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 		// Loop over all pairs to trade
 		for _, pair := range pairsToTradeByPlatform[platformName] {
-			// create order with initial fields
-			order := model.Order{
-				Pair: pair,
-			}
-
-			// use it here to check if balance got enough cash before trying to get prices history from platform
-			err = svc.fillOrder(platform, &order)
-			if err != nil {
-				return
-			}
-
-			// if amount is less than config, order will not be open
-			if order.Amount < svc.config.MinimumAmountToOpenPosition {
-				continue
-			}
-
 			// get prices history based on interval config
 			var prices []*model.Price
 			priceForm := tradingPlatform.GetPricesForm{
@@ -213,9 +199,12 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 			// open order if conditions are ok
 			if openView.ShouldAddOrder {
-				order.Side = openView.Side
-				order.Type = openView.Type
-				order.Price = openView.Price
+				order := model.Order{
+					Pair:  pair,
+					Side:  openView.Side,
+					Type:  openView.Type,
+					Price: openView.Price,
+				}
 				err = svc.fillOrder(platform, &order)
 				if err != nil {
 					return
@@ -231,20 +220,22 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
-	balance, err := platform.GetBalance()
+	err = platform.UpdateBalance(svc.balanceByPlatform[platform.Name()])
 	if err != nil {
 		return
 	}
-	err = svc.repo.StoreBalance(balance)
+	err = svc.repo.StoreBalance(svc.balanceByPlatform[platform.Name()])
 	if err != nil {
 		return
 	}
-	if svc.currentBalanceByPlatformByCurrency[platform.Name()] == nil {
-		svc.currentBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
+
+	// init balance if not already done
+	if svc.initialBalanceByPlatformByCurrency[platform.Name()] == nil {
+		svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
+		svc.initialBalanceByPlatformByCurrency[platform.Name()] = svc.balanceByPlatform[platform.Name()].ValueByCurrency
 	}
-	svc.currentBalanceByPlatformByCurrency[platform.Name()] = balance.ValueByCurrency
-	logger.Infof("Platform %s --> Balance %v at %s", platform.Name(), balance.ValueByCurrency,
-		balance.UpdatedAt.Format(time.RFC3339))
+	logger.Infof("Balance %v at %s", svc.balanceByPlatform[platform.Name()].ValueByCurrency,
+		svc.balanceByPlatform[platform.Name()].UpdatedAt.Format(time.RFC3339))
 	return
 }
 
@@ -257,7 +248,7 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 	if err != nil {
 		return
 	}
-	for pair, price := range prices {
+	for _, price := range prices {
 		err = svc.repo.StorePrice(price)
 		if err != nil {
 			return
@@ -265,8 +256,8 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 		if svc.indexPriceByPlatformByPair[platform.Name()] == nil {
 			svc.indexPriceByPlatformByPair[platform.Name()] = make(map[string]*model.Price)
 		}
-		svc.indexPriceByPlatformByPair[platform.Name()][pair] = price
-		logger.Infof("Platform %s --> %s ask=%0.2f bid=%0.2f at %s", platform.Name(), pair, price.Ask,
+		svc.indexPriceByPlatformByPair[platform.Name()][price.Pair] = price
+		logger.Infof("%s ask=%0.2f bid=%0.2f at %s", price.Pair, price.Ask,
 			price.Bid, price.Date.Format(time.RFC3339))
 	}
 	return
@@ -294,7 +285,7 @@ func (svc *service) fillOrder(platform tradingPlatform.Api, order *model.Order) 
 	if err != nil {
 		return
 	}
-	balance, ok := svc.currentBalanceByPlatformByCurrency[platform.Name()][currency]
+	balance, ok := svc.balanceByPlatform[platform.Name()].ValueByCurrency[currency]
 	if !ok {
 		return errCurrencyNotInBalance
 	}

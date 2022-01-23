@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
+	"fmt"
 	"google.golang.org/api/sheets/v4"
 	"time"
 )
@@ -61,7 +62,7 @@ func (r *repo) StoreBalance(balance *model.Balance) (err error) {
 		Values: [][]interface{}{
 			{
 				balance.PlatformName,
-				balance.ValueByCurrency,
+				fmt.Sprintf("%v", balance.ValueByCurrency),
 				balance.UpdatedAt.Format(time.RFC3339),
 			},
 		},
