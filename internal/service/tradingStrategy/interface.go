@@ -1,6 +1,7 @@
 package tradingStrategy
 
+import "crypto-bot/internal/model"
+
 type Algo interface {
-	ShouldAddOrder() (ok bool, err error)
-	Config() (config *Config, err error)
+	ShouldAddOrder(form ShouldAddOrderForm) (ok bool, order *model.Order, err error)
 }

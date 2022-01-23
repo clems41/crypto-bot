@@ -21,15 +21,15 @@ func CurrencyNeededToTradePair(pair string, tradeType string) (currency string, 
 	case tradingConst.BuySideOrder:
 		currency, ok := currencyNeededByPairToBuy[pair]
 		if !ok {
-			return currency, errCannotFindCurrencyForPair(pair)
+			return currency, errCannotFindCurrencyForPair
 		}
 	case tradingConst.SellSideOrder:
 		currency, ok := currencyNeededByPairToSell[pair]
 		if !ok {
-			return currency, errCannotFindCurrencyForPair(pair)
+			return currency, errCannotFindCurrencyForPair
 		}
 	default:
-		return currency, errCannotFindCurrencyForPair(pair)
+		return currency, errCannotFindCurrencyForPair
 	}
 	return
 }

@@ -2,6 +2,7 @@ package googleSheetRepository
 
 import (
 	"context"
+	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"google.golang.org/api/sheets/v4"
 	"time"

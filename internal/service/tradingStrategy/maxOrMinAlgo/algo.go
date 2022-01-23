@@ -1,6 +1,7 @@
 package maxOrMinAlgo
 
 import (
+	"crypto-bot/internal/model"
 	"crypto-bot/internal/service/tradingStrategy"
 )
 
@@ -22,13 +23,6 @@ func New() (algo *algorithm, err error) {
 	return
 }
 
-func (algo *algorithm) ShouldAddOrder() (ok bool, err error) {
-	return
-}
-
-func (algo *algorithm) Config() (config *tradingStrategy.Config, err error) {
-	config = &tradingStrategy.Config{
-		NumberPreviousPricesNeeded: algo.config.NumberOfPreviousPricesToCompare,
-	}
+func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (ok bool, order *model.Order, err error) {
 	return
 }

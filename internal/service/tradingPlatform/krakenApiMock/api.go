@@ -52,7 +52,7 @@ func (api *krakenApi) CancelAllOrders() (view tradingPlatform.CancelAllOrdersVie
 	return
 }
 
-func (api *krakenApi) GetPrices(form tradingPlatform.GetPriceForm) (prices []*model.Price, err error) {
+func (api *krakenApi) GetPrices(form tradingPlatform.GetPricesForm) (prices []*model.Price, err error) {
 	return
 }
 

@@ -13,8 +13,8 @@ type Config struct {
 	DelayBetweenEachRunInMilliSeconds int
 	// MinimumResultInPercentToClosePosition defines minimum result in percent to close position, position will not be closed if actual result is less than this value
 	MinimumResultInPercentToClosePosition float64
-	// NumberOfPreviousPricesToCompare defines number of previous prices to use with opening position algorithm
-	NumberOfPreviousPricesToCompare int
+	// IntervalToComparePricesInMinutes defines duration in minutes to get prices history before making the choice to add new order
+	IntervalToComparePricesInMinutes int
 	// MaxOpenedPositionsByPair defines max number of position that should be opened for specific pair
 	MaxOpenedPositionsByPair int
 	// MinimumAmountToOpenPosition defines minimum value that should be used to open new position, if less than this value position will not be open

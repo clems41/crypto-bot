@@ -1,5 +1,7 @@
 package tradingPlatform
 
+import "time"
+
 /* Add Order */
 
 /* Cancel Order */
@@ -12,7 +14,9 @@ type CancelAllOrdersView struct {
 
 /* Get Price */
 
-type GetPriceForm struct {
+type GetPricesForm struct {
+	Pair      string
+	SinceTime time.Time
 }
 
 type GetPriceView struct {

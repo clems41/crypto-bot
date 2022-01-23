@@ -9,7 +9,7 @@ import (
 const (
 	envDelayBetweenEachRunInMilliSeconds     = "DELAY_RUN_MS"
 	envMinimumResultInPercentToClosePosition = "MIN_RESULT"
-	envNumberOfPreviousPricesToCompare       = "NB_PRICES"
+	envIntervalToComparePricesInMinutes      = "INTERVAL_PRICES"
 	envMaxOpenedPositionsByPair              = "MAX_POSITION_PAIR"
 	envMinimumAmountToOpenPosition           = "MIN_AMOUNT"
 )
@@ -17,7 +17,7 @@ const (
 const (
 	defaultDelayBetweenEachRunInMilliSeconds     = "5000"
 	defaultMinimumResultInPercentToClosePosition = "0.5"
-	defaultNumberOfPreviousPricesToCompare       = "720" // 720 * 5000ms --> 1 hour
+	defaultIntervalToComparePricesInMinutes      = "60" // --> 1 hour
 	defaultMaxOpenedPositionsByPair              = "1"
 	defaultMinimumAmountToOpenPosition           = "10"
 )
@@ -35,7 +35,7 @@ var (
 func GetConfigFromEnvOrDefault() (config Config, err error) {
 	delayBetweenEachRunInMilliSecondsStr := envUtils.GetFromEnvOrDefault(envDelayBetweenEachRunInMilliSeconds, defaultDelayBetweenEachRunInMilliSeconds)
 	minimumResultInPercentToClosePositionStr := envUtils.GetFromEnvOrDefault(envMinimumResultInPercentToClosePosition, defaultMinimumResultInPercentToClosePosition)
-	numberOfPreviousPricesToCompareStr := envUtils.GetFromEnvOrDefault(envNumberOfPreviousPricesToCompare, defaultNumberOfPreviousPricesToCompare)
+	intervalToComparePricesInMinutesStr := envUtils.GetFromEnvOrDefault(envIntervalToComparePricesInMinutes, defaultIntervalToComparePricesInMinutes)
 	maxOpenedPositionsByPairStr := envUtils.GetFromEnvOrDefault(envMaxOpenedPositionsByPair, defaultMaxOpenedPositionsByPair)
 	minimumAmountToOpenPositionStr := envUtils.GetFromEnvOrDefault(envMinimumAmountToOpenPosition, defaultMinimumAmountToOpenPosition)
 	delayBetweenEachRunInMilliSeconds, err := strconv.Atoi(delayBetweenEachRunInMilliSecondsStr)
@@ -46,7 +46,7 @@ func GetConfigFromEnvOrDefault() (config Config, err error) {
 	if err != nil {
 		return
 	}
-	numberOfPreviousPricesToCompare, err := strconv.Atoi(numberOfPreviousPricesToCompareStr)
+	intervalToComparePricesInMinutes, err := strconv.Atoi(intervalToComparePricesInMinutesStr)
 	if err != nil {
 		return
 	}
@@ -61,7 +61,7 @@ func GetConfigFromEnvOrDefault() (config Config, err error) {
 	config = Config{
 		DelayBetweenEachRunInMilliSeconds:     delayBetweenEachRunInMilliSeconds,
 		MinimumResultInPercentToClosePosition: minimumResultInPercentToClosePosition,
-		NumberOfPreviousPricesToCompare:       numberOfPreviousPricesToCompare,
+		IntervalToComparePricesInMinutes:      intervalToComparePricesInMinutes,
 		MaxOpenedPositionsByPair:              maxOpenedPositionsByPair,
 		MinimumAmountToOpenPosition:           minimumAmountToOpenPosition,
 		PairToTradeByPlatform:                 pairsToTradeByPlatform,
