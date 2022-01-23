@@ -129,7 +129,7 @@ func (api *api) ClosePosition(form tradingPlatform.ClosePositionForm) (view trad
 		return view, tradingPlatform.ErrPairNotFound
 	}
 	askPrice := position.AskPrice
-	bidPrice := price.BidPrice
+	bidPrice := price.BidPrice * (1 - fakeFeesInPercent/100) // applying platform fees when closing position
 	profit := tradingUtils.GetProfit(askPrice, bidPrice, position.Amount)
 	result := tradingUtils.GetResult(askPrice, bidPrice, position.Amount)
 	currency := tradingUtils.CurrencyNeededToTradePair(position.Pair)

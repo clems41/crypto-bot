@@ -120,9 +120,15 @@ func (svc *service) Stop() (err error) {
 		if err != nil {
 			return
 		}
-		for _, position := range openedPositions.Positions {
-			form := tradingPlatform.ClosePositionForm{PositionID: position.ID}
-			_, err = platform.ClosePosition(form)
+		for _, openedPosition := range openedPositions.Positions {
+			position := Position{
+				ID:           openedPosition.ID,
+				PlatformName: platform.Name(),
+				Pair:         openedPosition.Pair,
+				Amount:       openedPosition.Amount,
+				AskPrice:     openedPosition.AskPrice,
+			}
+			err = svc.closePosition(position)
 			if err != nil {
 				return
 			}

@@ -16,7 +16,7 @@ const (
 
 const (
 	defaultDelayBetweenEachRunInMilliSeconds     = "5000"
-	defaultMinimumResultInPercentToClosePosition = "0.4"
+	defaultMinimumResultInPercentToClosePosition = "0.5"
 	defaultNumberOfPreviousPricesToCompare       = "720" // 720 * 5000ms --> 1 hour
 	defaultMaxOpenedPositionsByPair              = "1"
 	defaultMinimumAmountToOpenPosition           = "10"
