@@ -14,10 +14,9 @@ import (
 var _ tradingPlatform.Api = (*api)(nil)
 
 type api struct {
-	apiKey            string
-	apiSecret         string
 	balanceByCurrency map[string]float64
 	positions         map[string]tradingPlatform.PositionView
+	krakenApi         *krakenapi.KrakenAPI
 }
 
 func New() (*api, error) {
@@ -29,10 +28,10 @@ func New() (*api, error) {
 	if err != nil {
 		return nil, err
 	}
+	krakenApi := krakenapi.New(apiKey, apiSecret)
 
 	return &api{
-		apiKey:    apiKey,
-		apiSecret: apiSecret,
+		krakenApi: krakenApi,
 		balanceByCurrency: map[string]float64{
 			tradingConst.EuroCurrency: initBalance,
 		},
@@ -167,8 +166,7 @@ func (api *api) GetPrice(form tradingPlatform.GetPriceForm) (view tradingPlatfor
 	}
 
 	// get prices from api
-	krakenApi := krakenapi.New(api.apiKey, api.apiSecret)
-	result, err := krakenApi.Ticker(krakenPairs...)
+	result, err := api.krakenApi.Ticker(krakenPairs...)
 	if err != nil {
 		return
 	}
