@@ -7,19 +7,17 @@ import (
 )
 
 const (
-	envDelayBetweenEachRunInMilliSeconds     = "DELAY_RUN_MS"
-	envMinimumResultInPercentToClosePosition = "MIN_RESULT"
-	envIntervalToComparePricesInMinutes      = "INTERVAL_PRICES"
-	envMaxOpenedPositionsByPair              = "MAX_POSITION_PAIR"
-	envMinimumAmountToOpenPosition           = "MIN_AMOUNT"
+	envDelayBetweenEachRunInMilliSeconds = "DELAY_RUN_MS"
+	envIntervalToComparePricesInMinutes  = "INTERVAL_PRICES"
+	envMaxOpenedPositionsByPair          = "MAX_POSITION_PAIR"
+	envMinimumAmountToOpenPosition       = "MIN_AMOUNT"
 )
 
 const (
-	defaultDelayBetweenEachRunInMilliSeconds     = "5000"
-	defaultMinimumResultInPercentToClosePosition = "0.5"
-	defaultIntervalToComparePricesInMinutes      = "60" // --> 1 hour
-	defaultMaxOpenedPositionsByPair              = "1"
-	defaultMinimumAmountToOpenPosition           = "10"
+	defaultDelayBetweenEachRunInMilliSeconds = "5000"
+	defaultIntervalToComparePricesInMinutes  = "60" // --> 1 hour
+	defaultMaxOpenedPositionsByPair          = "1"
+	defaultMinimumAmountToOpenPosition       = "10"
 )
 
 var (
@@ -34,15 +32,10 @@ var (
 
 func GetConfigFromEnvOrDefault() (config Config, err error) {
 	delayBetweenEachRunInMilliSecondsStr := envUtils.GetFromEnvOrDefault(envDelayBetweenEachRunInMilliSeconds, defaultDelayBetweenEachRunInMilliSeconds)
-	minimumResultInPercentToClosePositionStr := envUtils.GetFromEnvOrDefault(envMinimumResultInPercentToClosePosition, defaultMinimumResultInPercentToClosePosition)
 	intervalToComparePricesInMinutesStr := envUtils.GetFromEnvOrDefault(envIntervalToComparePricesInMinutes, defaultIntervalToComparePricesInMinutes)
 	maxOpenedPositionsByPairStr := envUtils.GetFromEnvOrDefault(envMaxOpenedPositionsByPair, defaultMaxOpenedPositionsByPair)
 	minimumAmountToOpenPositionStr := envUtils.GetFromEnvOrDefault(envMinimumAmountToOpenPosition, defaultMinimumAmountToOpenPosition)
 	delayBetweenEachRunInMilliSeconds, err := strconv.Atoi(delayBetweenEachRunInMilliSecondsStr)
-	if err != nil {
-		return
-	}
-	minimumResultInPercentToClosePosition, err := strconv.ParseFloat(minimumResultInPercentToClosePositionStr, 64)
 	if err != nil {
 		return
 	}
@@ -59,12 +52,11 @@ func GetConfigFromEnvOrDefault() (config Config, err error) {
 		return
 	}
 	config = Config{
-		DelayBetweenEachRunInMilliSeconds:     delayBetweenEachRunInMilliSeconds,
-		MinimumResultInPercentToClosePosition: minimumResultInPercentToClosePosition,
-		IntervalToComparePricesInMinutes:      intervalToComparePricesInMinutes,
-		MaxOpenedPositionsByPair:              maxOpenedPositionsByPair,
-		MinimumAmountToOpenPosition:           minimumAmountToOpenPosition,
-		PairToTradeByPlatform:                 pairsToTradeByPlatform,
+		DelayBetweenEachRunInMilliSeconds: delayBetweenEachRunInMilliSeconds,
+		IntervalToComparePricesInMinutes:  intervalToComparePricesInMinutes,
+		MaxOpenedPositionsByPair:          maxOpenedPositionsByPair,
+		MinimumAmountToOpenPosition:       minimumAmountToOpenPosition,
+		PairToTradeByPlatform:             pairsToTradeByPlatform,
 	}
 	return
 }

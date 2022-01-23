@@ -21,6 +21,7 @@ type Service interface {
 	updateBalance(platform tradingPlatform.Api) (err error)
 	updateIndexPrice(platform tradingPlatform.Api) (err error)
 	addOrder(platform tradingPlatform.Api, order *model.Order) (err error)
+	fillOrder(platform tradingPlatform.Api, order *model.Order) (err error)
 }
 
 type service struct {
@@ -172,6 +173,22 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 		// Loop over all pairs to trade
 		for _, pair := range pairsToTradeByPlatform[platformName] {
+			// create order with initial fields
+			order := model.Order{
+				Pair: pair,
+			}
+
+			// use it here to check if balance got enough cash before trying to get prices history from platform
+			err = svc.fillOrder(platform, &order)
+			if err != nil {
+				return
+			}
+
+			// if amount is less than config, order will not be open
+			if order.Amount < svc.config.MinimumAmountToOpenPosition {
+				continue
+			}
+
 			// get prices history based on interval config
 			var prices []*model.Price
 			priceForm := tradingPlatform.GetPricesForm{
@@ -188,16 +205,22 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				PriceHistory: prices,
 				IndexPrice:   svc.indexPriceByPlatformByPair[platformName][pair],
 			}
-			var shouldAddOrder bool
-			var order *model.Order
-			shouldAddOrder, order, err = svc.algo.ShouldAddOrder(openForm)
+			var openView tradingStrategy.ShouldAddOrderView
+			openView, err = svc.algo.ShouldAddOrder(openForm)
 			if err != nil {
 				return
 			}
 
 			// open order if conditions are ok
-			if shouldAddOrder {
-				err = svc.addOrder(platform, order)
+			if openView.ShouldAddOrder {
+				order.Side = openView.Side
+				order.Type = openView.Type
+				order.Price = openView.Price
+				err = svc.fillOrder(platform, &order)
+				if err != nil {
+					return
+				}
+				err = svc.addOrder(platform, &order)
 				if err != nil {
 					return
 				}
@@ -250,9 +273,6 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 }
 
 func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (err error) {
-	if order == nil {
-		return errOrderIsNil
-	}
 	// add order using platform
 	err = platform.AddOrder(order)
 	if err != nil {
@@ -265,5 +285,22 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 		return
 	}
 	logger.Infof("New order has been added %v", *order)
+	return
+}
+
+func (svc *service) fillOrder(platform tradingPlatform.Api, order *model.Order) (err error) {
+	// get current balance needed for pair to trade
+	currency, err := CurrencyNeededToTradePair(order.Pair, order.Side)
+	if err != nil {
+		return
+	}
+	balance, ok := svc.currentBalanceByPlatformByCurrency[platform.Name()][currency]
+	if !ok {
+		return errCurrencyNotInBalance
+	}
+
+	// invest all in
+	order.Amount = balance
+
 	return
 }

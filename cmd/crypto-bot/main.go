@@ -6,7 +6,7 @@ import (
 	"crypto-bot/internal/repository/googleSheetRepository"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/internal/service/tradingPlatform/krakenApiMock"
-	"crypto-bot/internal/service/tradingStrategy/maxOrMinAlgo"
+	"crypto-bot/internal/service/tradingStrategy/minOrMaxAlgo"
 	"crypto-bot/pkg/logger"
 	"os"
 	"os/signal"
@@ -24,7 +24,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	minOrMaxAlgo, err := maxOrMinAlgo.New()
+	minOrMaxAlgo, err := minOrMaxAlgo.New()
 	if err != nil {
 		logger.Fatal(err)
 	}

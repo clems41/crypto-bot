@@ -87,14 +87,15 @@ func (r *repo) StoreOrder(order *model.Order) (err error) {
 		Values: [][]interface{}{
 			{
 				order.ID,
+				order.Pair,
 				order.Side,
 				order.Volume,
 				order.Type,
 				order.Price,
 				order.Amount,
 				order.Leverage,
-				order.CloseConditionType,
-				order.CloseConditionPrice,
+				//order.CloseConditionType,
+				//order.CloseConditionPrice,
 				order.Fees,
 				order.Status,
 			},

@@ -1,7 +1,6 @@
 package tradingStrategy
 
-import "crypto-bot/internal/model"
-
 type Algo interface {
-	ShouldAddOrder(form ShouldAddOrderForm) (ok bool, order *model.Order, err error)
+	// ShouldAddOrder determines if order should be open. If returned order is nil, order should not be open
+	ShouldAddOrder(form ShouldAddOrderForm) (view ShouldAddOrderView, err error)
 }

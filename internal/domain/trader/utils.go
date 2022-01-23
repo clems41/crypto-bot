@@ -3,32 +3,26 @@ package trader
 import "crypto-bot/internal/constant/tradingConst"
 
 var (
-	currencyNeededByPairToBuy = map[string]string{
-		tradingConst.BtcEurPair:  tradingConst.EuroCurrency,
-		tradingConst.DashEurPair: tradingConst.EuroCurrency,
-		tradingConst.EthEurPair:  tradingConst.EuroCurrency,
-	}
-	currencyNeededByPairToSell = map[string]string{
-		tradingConst.BtcEurPair:  tradingConst.BtcCurrency,
-		tradingConst.DashEurPair: tradingConst.DashCurrency,
-		tradingConst.EthEurPair:  tradingConst.EthCurrency,
+	currencyNeededByPairBySide = map[string]map[string]string{
+		tradingConst.BtcEurPair: {
+			tradingConst.BuySideOrder:  tradingConst.EuroCurrency,
+			tradingConst.SellSideOrder: tradingConst.BtcCurrency,
+		},
+		tradingConst.DashEurPair: {
+			tradingConst.BuySideOrder:  tradingConst.EuroCurrency,
+			tradingConst.SellSideOrder: tradingConst.DashCurrency,
+		},
+		tradingConst.EthEurPair: {
+			tradingConst.BuySideOrder:  tradingConst.EuroCurrency,
+			tradingConst.SellSideOrder: tradingConst.EthCurrency,
+		},
 	}
 )
 
-// CurrencyNeededToTradePair will return currency that must be used to trade specific pair and specific tradeType (buy or sell)
-func CurrencyNeededToTradePair(pair string, tradeType string) (currency string, err error) {
-	switch tradeType {
-	case tradingConst.BuySideOrder:
-		currency, ok := currencyNeededByPairToBuy[pair]
-		if !ok {
-			return currency, errCannotFindCurrencyForPair
-		}
-	case tradingConst.SellSideOrder:
-		currency, ok := currencyNeededByPairToSell[pair]
-		if !ok {
-			return currency, errCannotFindCurrencyForPair
-		}
-	default:
+// CurrencyNeededToTradePair will return currency that must be used to trade specific pair and specific orderSide (buy or sell)
+func CurrencyNeededToTradePair(pair string, orderSide string) (currency string, err error) {
+	currency, ok := currencyNeededByPairBySide[pair][orderSide]
+	if !ok {
 		return currency, errCannotFindCurrencyForPair
 	}
 	return
