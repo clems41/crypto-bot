@@ -6,6 +6,7 @@ import (
 	"crypto-bot/internal/repository"
 	"fmt"
 	"google.golang.org/api/sheets/v4"
+	"reflect"
 	"time"
 )
 
@@ -13,6 +14,7 @@ var _ repository.Repository = (*repo)(nil)
 
 type repo struct {
 	googleSheetService *sheets.Service
+	previousBalance    map[string]float64
 }
 
 func New(ctx context.Context) (r *repo, err error) {
@@ -22,6 +24,7 @@ func New(ctx context.Context) (r *repo, err error) {
 	}
 	r = &repo{
 		googleSheetService: googleSheetService,
+		previousBalance:    make(map[string]float64),
 	}
 	return
 }
@@ -57,23 +60,31 @@ func (r *repo) StoreBalance(balance *model.Balance) (err error) {
 		return
 	}
 
-	// append new line in google spreadsheet
-	valueRange := sheets.ValueRange{
-		Values: [][]interface{}{
-			{
-				balance.PlatformName,
-				fmt.Sprintf("%v", balance.ValueByCurrency),
-				balance.UpdatedAt.Format(time.RFC3339),
+	// don't send new balance into google spreadsheet if no new changes
+	if !reflect.DeepEqual(balance.ValueByCurrency, r.previousBalance) {
+		// append new line in google spreadsheet
+		valueRange := sheets.ValueRange{
+			Values: [][]interface{}{
+				{
+					balance.PlatformName,
+					fmt.Sprintf("%v", balance.ValueByCurrency),
+					balance.UpdatedAt.Format(time.RFC3339),
+				},
 			},
-		},
+		}
+		_, err = r.googleSheetService.Spreadsheets.Values.
+			Append(googleSpreadsheetID, balanceRangeUpdate, &valueRange).
+			ValueInputOption("RAW").
+			Do()
+		if err != nil {
+			return
+		}
 	}
-	_, err = r.googleSheetService.Spreadsheets.Values.
-		Append(googleSpreadsheetID, balanceRangeUpdate, &valueRange).
-		ValueInputOption("RAW").
-		Do()
-	if err != nil {
-		return
+
+	for currency, value := range balance.ValueByCurrency {
+		r.previousBalance[currency] = value
 	}
+
 	return
 }
 
