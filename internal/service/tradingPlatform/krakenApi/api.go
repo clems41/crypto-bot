@@ -6,10 +6,8 @@ import (
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
-	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"
-	"github.com/google/uuid"
 	"reflect"
 	"strconv"
 	"time"
@@ -18,9 +16,7 @@ import (
 var _ tradingPlatform.Api = (*krakenApi)(nil)
 
 type krakenApi struct {
-	client                *krakenClient.KrakenAPI
-	balanceByCurrencyMock map[string]float64
-	orders                []*model.Order
+	client *krakenClient.KrakenAPI
 }
 
 func New() (api *krakenApi, err error) {
@@ -35,13 +31,12 @@ func New() (api *krakenApi, err error) {
 	client := krakenClient.New(apiKey, apiSecret)
 
 	return &krakenApi{
-		client:                client,
-		balanceByCurrencyMock: initialBalance,
+		client: client,
 	}, nil
 }
 
 func (api *krakenApi) Name() (name string) {
-	return tradingConst.KrakenMockPlatform
+	return tradingConst.KrakenPlatform
 }
 
 func (api *krakenApi) AddOrder(order *model.Order) (err error) {
@@ -67,35 +62,15 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	}
 
 	// TODO fill order from platform orders info
-	logger.Infof("Orders %v has been added to %s : %s", api.Name(), response.TransactionIds, response.Description)
+	logger.Infof("Orders %v has been added to %s : %s", api.Name(), response.TransactionIds, response.Description.Order)
 
 	// fill order as mock
-	fees := order.Amount * takerFees / 100
-	volumeAfterFees := order.Volume * (1 - takerFees/100)
-	amountAfterFees := order.Amount * (1 - takerFees/100)
-	order.ID = uuid.New().String()
-	order.Fees = fees
+	if len(response.TransactionIds) > 0 {
+		order.ID = response.TransactionIds[0]
+	}
+	order.Fees = order.Amount * takerFees / 100
 	order.Status = tradingConst.CloseOrderStatus
-
-	// update balance mock
-	currencyNeeded, ok := tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)
-	if !ok {
-		return fmt.Errorf("cannot find currency for pair %s", order.Pair)
-	}
-	currencyGot, ok := tradingUtils.CurrencyGotAfterTradingPair(order.Pair, order.Side)
-	if !ok {
-		return fmt.Errorf("cannot find currency for pair %s", order.Pair)
-	}
-	if order.Side == tradingConst.BuySideOrder {
-		api.balanceByCurrencyMock[currencyNeeded] -= order.Amount
-		api.balanceByCurrencyMock[currencyGot] += volumeAfterFees
-	} else {
-		api.balanceByCurrencyMock[currencyNeeded] -= order.Volume
-		api.balanceByCurrencyMock[currencyGot] += amountAfterFees
-	}
-
-	// add orders in memory
-	api.orders = append(api.orders, order)
+	order.Amount -= order.Fees
 	return
 }
 
@@ -189,8 +164,27 @@ func (api *krakenApi) GetAllOrders() (orders []*model.Order, err error) {
 }
 
 func (api *krakenApi) UpdateBalance(balance *model.Balance) (err error) {
-	balance.ValueByCurrency = api.balanceByCurrencyMock
+	// get response form kraken api
+	response, err := api.client.Balance()
+	if err != nil {
+		return
+	}
+
+	// search required value from response
+	value := reflect.ValueOf(response).Elem()
+	typeOfResponse := value.Type()
+	for i := 0; i < value.NumField(); i++ {
+		balanceCurrencyInterface := value.Field(i).Interface()
+		balanceCurrency, ok := balanceCurrencyInterface.(float64)
+		if ok {
+			var currency string
+			currency, ok = currencyConverter[typeOfResponse.Field(i).Name]
+			if ok {
+				balance.ValueByCurrency[currency] = balanceCurrency
+			}
+		}
+	}
+
 	balance.UpdatedAt = time.Now()
-	balance.PlatformName = api.Name()
 	return
 }

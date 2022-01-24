@@ -20,7 +20,6 @@ var (
 	pairsToTradeByPlatform = map[string][]string{
 		tradingConst.KrakenMockPlatform: {
 			tradingConst.BtcEurPair,
-			tradingConst.DashEurPair,
 			tradingConst.EthEurPair,
 		},
 	}

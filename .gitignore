@@ -34,4 +34,7 @@ coverage-report.html
 
 # Generated file using local storage
 *.csv
+
+# credential files
 google_credentials.json
+kraken_credentials.json

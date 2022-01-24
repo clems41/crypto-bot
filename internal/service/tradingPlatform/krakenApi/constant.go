@@ -21,14 +21,6 @@ const (
 )
 
 var (
-	initialBalance = map[string]float64{
-		tradingConst.EthCurrency:  0.04728132,
-		tradingConst.EuroCurrency: 100,
-		tradingConst.BtcCurrency:  0.00321543,
-	}
-)
-
-var (
 	currencyConverter = map[string]string{
 		"ZEUR": tradingConst.EuroCurrency,
 		"DASH": tradingConst.DashCurrency,

@@ -3,6 +3,7 @@ package minOrMaxAlgo
 import (
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/service/tradingStrategy"
+	"fmt"
 )
 
 var _ tradingStrategy.Algo = (*algorithm)(nil)
@@ -25,13 +26,17 @@ func New() (algo *algorithm, err error) {
 
 func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (view tradingStrategy.ShouldAddOrderView, err error) {
 	if len(form.PriceHistory) < algo.config.NumberOfPreviousPricesToCompare {
-		return view, tradingStrategy.ErrNotEnoughPrice
+		err = fmt.Errorf("not enough prices to take a decision, got %d but need %d",
+			len(form.PriceHistory), algo.config.NumberOfPreviousPricesToCompare)
 	}
 
+	// do calculation only on last NumberOfPreviousPricesToCompare prices
+	pricesHistory := form.PriceHistory[len(form.PriceHistory)-algo.config.NumberOfPreviousPricesToCompare:]
+
 	// find min and max from price history
-	minimumAsk := form.PriceHistory[0].Ask
-	maximumBid := form.PriceHistory[0].Bid
-	for _, price := range form.PriceHistory {
+	minimumAsk := pricesHistory[0].Ask
+	maximumBid := pricesHistory[0].Bid
+	for _, price := range pricesHistory {
 		if price.Ask < minimumAsk {
 			minimumAsk = price.Ask
 		}

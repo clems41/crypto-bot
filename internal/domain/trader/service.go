@@ -1,12 +1,14 @@
 package trader
 
 import (
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/internal/service/tradingStrategy"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/tradingUtils"
+	"fmt"
 	"time"
 )
 
@@ -143,7 +145,7 @@ func (svc *service) Stop() (err error) {
 			initialBalance += initialBalanceCurrency
 			finalBalanceCurrency, ok := svc.balanceByPlatform[platformName].ValueByCurrency[currency]
 			if !ok {
-				return errCurrencyNotInBalance
+				return fmt.Errorf("cannot find balance for currency %s", currency)
 			}
 			finalBalance += finalBalanceCurrency
 		}
@@ -205,10 +207,6 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 					Type:  openView.Type,
 					Price: openView.Price,
 				}
-				err = svc.fillOrder(platform, &order)
-				if err != nil {
-					return
-				}
 				err = svc.addOrder(platform, &order)
 				if err != nil {
 					return
@@ -242,7 +240,7 @@ func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
 func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 	pairs, ok := pairsToTradeByPlatform[platform.Name()]
 	if !ok {
-		return errPlatformNotExist
+		return fmt.Errorf("cannot find pairs for platform %s", platform.Name())
 	}
 	prices, err := platform.GetIndexPrices(pairs...)
 	if err != nil {
@@ -264,6 +262,17 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 }
 
 func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (err error) {
+	// fill missing order fields
+	err = svc.fillOrder(platform, order)
+	if err != nil {
+		return
+	}
+
+	// don't open order if balance is less or equal to 0
+	if order.Amount <= 0 {
+		return
+	}
+
 	// add order using platform
 	err = platform.AddOrder(order)
 	if err != nil {
@@ -281,17 +290,23 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 
 func (svc *service) fillOrder(platform tradingPlatform.Api, order *model.Order) (err error) {
 	// get current balance needed for pair to trade
-	currency, err := CurrencyNeededToTradePair(order.Pair, order.Side)
-	if err != nil {
-		return
+	currency, ok := tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)
+	if !ok {
+		return fmt.Errorf("cannot find currency for pair %s and side %s", order.Pair, order.Side)
 	}
 	balance, ok := svc.balanceByPlatform[platform.Name()].ValueByCurrency[currency]
 	if !ok {
-		return errCurrencyNotInBalance
+		return fmt.Errorf("cannot find balance for currency %s", currency)
 	}
 
-	// invest all in
-	order.Amount = balance
+	// fill volume based on price and amount
+	if order.Side == tradingConst.BuySideOrder {
+		order.Amount = balance
+		order.Volume = balance / order.Price
+	} else {
+		order.Amount = balance * order.Price
+		order.Volume = balance
+	}
 
 	return
 }

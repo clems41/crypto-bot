@@ -82,12 +82,14 @@ func (r *repo) StoreOrder(order *model.Order) (err error) {
 	if err != nil {
 		return
 	}
+	order.Date = time.Now()
 
 	// append new line in google spreadsheet
 	valueRange := sheets.ValueRange{
 		Values: [][]interface{}{
 			{
 				order.ID,
+				order.Date,
 				order.Pair,
 				order.Side,
 				order.Volume,

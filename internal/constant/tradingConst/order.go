@@ -18,3 +18,9 @@ const (
 	StopLossCloseConditionType   = "stop-loss"
 	TakeProfitCloseConditionType = "take-profit"
 )
+
+const (
+	OpenOrderStatus   = "open"
+	CloseOrderStatus  = "close"
+	CancelOrderStatus = "cancel"
+)

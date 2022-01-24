@@ -1,9 +1,13 @@
 package model
 
-import "github.com/go-playground/validator/v10"
+import (
+	"github.com/go-playground/validator/v10"
+	"time"
+)
 
 type Order struct {
 	ID       string
+	Date     time.Time
 	Pair     string
 	Side     string  `validate:"oneof=buy sell"`                           // buy or sell
 	Volume   float64 `validate:"gte=0"`                                    // quantity of currency to buy/sell, can be 0, will be filled by trading platform
