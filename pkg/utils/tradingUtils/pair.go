@@ -16,6 +16,10 @@ var (
 			tradingConst.BuySideOrder:  tradingConst.EuroCurrency,
 			tradingConst.SellSideOrder: tradingConst.EthCurrency,
 		},
+		tradingConst.EthBtcPair: {
+			tradingConst.BuySideOrder:  tradingConst.BtcCurrency,
+			tradingConst.SellSideOrder: tradingConst.EthCurrency,
+		},
 	}
 )
 

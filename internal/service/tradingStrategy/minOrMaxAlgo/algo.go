@@ -25,9 +25,9 @@ func New() (algo *algorithm, err error) {
 }
 
 func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (view tradingStrategy.ShouldAddOrderView, err error) {
-	if len(form.PriceHistory) < algo.config.NumberOfPreviousPricesToCompare {
+	if len(form.PriceHistory) < algo.PricesNeeded() {
 		err = fmt.Errorf("not enough prices to take a decision, got %d but need %d",
-			len(form.PriceHistory), algo.config.NumberOfPreviousPricesToCompare)
+			len(form.PriceHistory), algo.PricesNeeded())
 	}
 
 	// do calculation only on last NumberOfPreviousPricesToCompare prices
@@ -63,4 +63,8 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	return
+}
+
+func (algo *algorithm) PricesNeeded() (numberOfPrices int) {
+	return algo.config.NumberOfPreviousPricesToCompare
 }

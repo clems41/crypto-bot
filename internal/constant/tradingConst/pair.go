@@ -9,7 +9,9 @@ const (
 
 /* Pairs using only crypto */
 
-const ()
+const (
+	EthBtcPair = "ETH_BTC"
+)
 
 /* Pairs using USD */
 

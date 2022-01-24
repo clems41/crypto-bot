@@ -78,34 +78,7 @@ func (api *krakenApi) CancelAllOrders() (view tradingPlatform.CancelAllOrdersVie
 	return
 }
 
-func (api *krakenApi) GetPrices(form tradingPlatform.GetPricesForm) (prices []*model.Price, err error) {
-	// get response form kraken api
-	krakenPair, err := GetKrakenPair(form.Pair)
-	if err != nil {
-		return
-	}
-	response, err := api.client.OHLC(krakenPair)
-	if err != nil {
-		return
-	}
-
-	// fill prices with response
-	for _, ohlc := range response.OHLC {
-		if ohlc.Time.After(form.SinceTime.Add(-5 * time.Minute)) {
-			prices = append(prices, &model.Price{
-				Date:         ohlc.Time,
-				PlatformName: api.Name(),
-				Pair:         form.Pair,
-				Ask:          ohlc.High,
-				Bid:          ohlc.Low,
-			})
-		}
-	}
-
-	return
-}
-
-func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []*model.Price, err error) {
+func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err error) {
 	// get response form kraken api
 	var krakenPairs []string
 	for _, pair := range pairs {
@@ -142,7 +115,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []*model.Price, er
 			if err != nil {
 				return
 			}
-			prices = append(prices, &model.Price{
+			prices = append(prices, model.Price{
 				Date:         time.Now(),
 				PlatformName: api.Name(),
 				Pair:         pair,
@@ -155,15 +128,15 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []*model.Price, er
 	return
 }
 
-func (api *krakenApi) GetOpenOrders() (orders []*model.Order, err error) {
+func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 	return
 }
 
-func (api *krakenApi) GetAllOrders() (orders []*model.Order, err error) {
+func (api *krakenApi) GetAllOrders() (orders []model.Order, err error) {
 	return
 }
 
-func (api *krakenApi) UpdateBalance(balance *model.Balance) (err error) {
+func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 	// get response form kraken api
 	response, err := api.client.Balance()
 	if err != nil {

@@ -21,6 +21,7 @@ var (
 		tradingConst.KrakenMockPlatform: {
 			tradingConst.BtcEurPair,
 			tradingConst.EthEurPair,
+			tradingConst.EthBtcPair,
 		},
 	}
 )

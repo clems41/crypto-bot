@@ -13,8 +13,9 @@ import (
 var _ repository.Repository = (*repo)(nil)
 
 type repo struct {
-	googleSheetService *sheets.Service
-	previousBalance    map[string]float64
+	googleSheetService     *sheets.Service
+	previousBalance        map[string]float64
+	pricesByPlatformByPair map[string]map[string][]model.Price
 }
 
 func New(ctx context.Context) (r *repo, err error) {
@@ -23,8 +24,9 @@ func New(ctx context.Context) (r *repo, err error) {
 		return
 	}
 	r = &repo{
-		googleSheetService: googleSheetService,
-		previousBalance:    make(map[string]float64),
+		googleSheetService:     googleSheetService,
+		previousBalance:        make(map[string]float64),
+		pricesByPlatformByPair: make(map[string]map[string][]model.Price),
 	}
 	return
 }
@@ -34,6 +36,13 @@ func (r *repo) StorePrice(price *model.Price) (err error) {
 	if err != nil {
 		return
 	}
+
+	// store in memory
+	if r.pricesByPlatformByPair[price.PlatformName] == nil {
+		r.pricesByPlatformByPair[price.PlatformName] = make(map[string][]model.Price)
+	}
+	r.pricesByPlatformByPair[price.PlatformName][price.Pair] = append(
+		r.pricesByPlatformByPair[price.PlatformName][price.Pair], *price)
 
 	// append new line in google spreadsheet
 	valueRange := sheets.ValueRange{
@@ -81,6 +90,7 @@ func (r *repo) StoreBalance(balance *model.Balance) (err error) {
 		}
 	}
 
+	// do this instead of directly copy to avoid getting pointer
 	for currency, value := range balance.ValueByCurrency {
 		r.previousBalance[currency] = value
 	}
@@ -119,5 +129,22 @@ func (r *repo) StoreOrder(order *model.Order) (err error) {
 		Append(googleSpreadsheetID, orderRangeUpdate, &valueRange).
 		ValueInputOption("RAW").
 		Do()
+	return
+}
+
+func (r *repo) GetPriceHistory(form repository.GetPriceHistoryForm) (prices []model.Price, err error) {
+	priceHistoryByPlatform, ok := r.pricesByPlatformByPair[form.PlatformName]
+	if !ok {
+		return prices, fmt.Errorf("cannot find price history for platform %s", form.PlatformName)
+	}
+	priceHistory, ok := priceHistoryByPlatform[form.Pair]
+	if !ok {
+		return prices, fmt.Errorf("cannot find price history for pair %s", form.Pair)
+	}
+	for _, price := range priceHistory {
+		if price.Date.After(form.SinceTime) {
+			prices = append(prices, price)
+		}
+	}
 	return
 }
