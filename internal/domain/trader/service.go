@@ -28,38 +28,29 @@ type Service interface {
 }
 
 type service struct {
-	quitChannel                        chan bool                          // quit goroutine when program exit
-	config                             *Config                            // config that should be applied with trading algorithm
-	platformApis                       map[string]tradingPlatform.Api     // communicate with trading platforms
-	repo                               repository.Repository              // use to store data
-	algo                               tradingStrategy.Algo               // use to know if order should be open based on prices
-	startTime                          time.Time                          // datetime when lago has been started
-	initialBalanceByPlatformByCurrency map[string]map[string]float64      // initial balance before opening first position by platform and by currency
-	balanceByPlatform                  map[string]*model.Balance          // current balance
-	indexPriceByPlatformByPair         map[string]map[string]*model.Price // store last index got from platform
+	quitChannel                        chan bool                         // quit goroutine when program exit
+	platformApis                       map[string]tradingPlatform.Api    // communicate with trading platforms
+	repo                               repository.Repository             // use to store data
+	algo                               tradingStrategy.Algo              // use to know if order should be open based on prices
+	startTime                          time.Time                         // datetime when lago has been started
+	initialBalanceByPlatformByCurrency map[string]map[string]float64     // initial balance before opening first position by platform and by currency
+	balanceByPlatform                  map[string]model.Balance          // current balance
+	indexPriceByPlatformByPair         map[string]map[string]model.Price // store last index got from platform
 }
 
-func NewService(config *Config, platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo) (Service, error) {
-	if config == nil {
-		defaultConfig, err := GetConfigFromEnvOrDefault()
-		if err != nil {
-			return nil, err
-		}
-		config = &defaultConfig
-	}
+func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo) (Service, error) {
 	platformApisMap := make(map[string]tradingPlatform.Api)
 	for _, platformApi := range platformApis {
 		platformApisMap[platformApi.Name()] = platformApi
 	}
 	return &service{
-		config:                             config,
 		quitChannel:                        make(chan bool),
 		platformApis:                       platformApisMap,
 		repo:                               repo,
 		algo:                               algo,
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
-		balanceByPlatform:                  make(map[string]*model.Balance),
-		indexPriceByPlatformByPair:         make(map[string]map[string]*model.Price),
+		balanceByPlatform:                  make(map[string]model.Balance),
+		indexPriceByPlatformByPair:         make(map[string]map[string]model.Price),
 	}, nil
 }
 
@@ -70,17 +61,15 @@ func (svc *service) Start() (err error) {
 
 	// init balance
 	for platformName, _ := range svc.platformApis {
-		if svc.balanceByPlatform[platformName] == nil {
-			svc.balanceByPlatform[platformName] = &model.Balance{
-				PlatformName:    platformName,
-				ValueByCurrency: make(map[string]float64),
-			}
+		svc.balanceByPlatform[platformName] = model.Balance{
+			PlatformName:    platformName,
+			ValueByCurrency: make(map[string]float64),
 		}
 	}
 
 	// Set initial balance, useful to calculate ending profit, result, etc...
 	for platformName, platform := range svc.platformApis {
-		err = platform.RefreshBalance(svc.balanceByPlatform[platformName])
+		err = svc.updateBalance(platform)
 		if err != nil {
 			return
 		}
@@ -93,7 +82,7 @@ func (svc *service) Start() (err error) {
 	}
 
 	// Run algorithm each X ms
-	for range time.Tick(time.Duration(svc.config.DelayBetweenEachRunInMilliSeconds) * time.Millisecond) { // Loop
+	for range time.Tick(delayBetweenEachRun) { // Loop
 		select {
 		case <-svc.quitChannel:
 			logger.Debugf("Stop message has been received")
@@ -173,7 +162,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			priceForm := repository.GetPriceHistoryForm{
 				PlatformName: platformName,
 				Pair:         pair,
-				SinceTime:    time.Now().Add(-time.Duration(svc.algo.PricesNeeded()*svc.config.DelayBetweenEachRunInMilliSeconds) * time.Millisecond),
+				SinceTime:    time.Now().Add(-time.Duration(svc.algo.PricesNeeded()) * delayBetweenEachRun),
 			}
 			prices, err = svc.repo.GetPriceHistory(priceForm)
 			if err != nil {
@@ -190,27 +179,23 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 			// fill open form to know if new order should be open
 			indexPrice, ok := svc.indexPriceByPlatformByPair[platformName][pair]
-			if !ok || indexPrice == nil {
+			if !ok {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
 			openForm := tradingStrategy.ShouldAddOrderForm{
 				PriceHistory: prices,
-				IndexPrice:   *indexPrice,
+				IndexPrice:   indexPrice,
 			}
-			var openView tradingStrategy.ShouldAddOrderView
-			openView, err = svc.algo.ShouldAddOrder(openForm)
+			var order model.Order
+			var shouldOpenOrder bool
+			shouldOpenOrder, order, err = svc.algo.ShouldAddOrder(openForm)
 			if err != nil {
 				return
 			}
 
 			// open order if conditions are ok
-			if openView.ShouldAddOrder {
-				order := model.Order{
-					Pair:  pair,
-					Side:  openView.Side,
-					Type:  openView.Type,
-					Price: openView.Price,
-				}
+			if shouldOpenOrder {
+				order.Pair = pair
 				err = svc.addOrder(platform, &order)
 				if err != nil {
 					return
@@ -222,11 +207,16 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
-	err = platform.RefreshBalance(svc.balanceByPlatform[platform.Name()])
+	balance, ok := svc.balanceByPlatform[platform.Name()]
+	if !ok {
+		return fmt.Errorf("cannot find balance for platform %s", platform.Name())
+	}
+	err = platform.RefreshBalance(&balance)
 	if err != nil {
 		return
 	}
-	err = svc.repo.StoreBalance(svc.balanceByPlatform[platform.Name()])
+	svc.balanceByPlatform[platform.Name()] = balance
+	err = svc.repo.StoreBalance(&balance)
 	if err != nil {
 		return
 	}
@@ -255,9 +245,9 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 			return
 		}
 		if svc.indexPriceByPlatformByPair[platform.Name()] == nil {
-			svc.indexPriceByPlatformByPair[platform.Name()] = make(map[string]*model.Price)
+			svc.indexPriceByPlatformByPair[platform.Name()] = make(map[string]model.Price)
 		}
-		svc.indexPriceByPlatformByPair[platform.Name()][price.Pair] = &price
+		svc.indexPriceByPlatformByPair[platform.Name()][price.Pair] = price
 		logger.Info(price)
 	}
 	return
@@ -280,6 +270,7 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 	if err != nil {
 		return
 	}
+	logger.Info(*order)
 
 	// update balance
 	err = svc.updateBalance(platform)
@@ -292,7 +283,6 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 	if err != nil {
 		return
 	}
-	logger.Info(*order)
 	return
 }
 
@@ -315,16 +305,5 @@ func (svc *service) fillOrder(platform tradingPlatform.Api, order *model.Order) 
 		order.Amount = balance * order.Price
 		order.Volume = balance
 	}
-
-	// fill close condition
-	order.CloseConditionType = tradingConst.TakeProfitCloseConditionType
-	var closeConditionPrice float64
-	if order.Side == tradingConst.BuySideOrder {
-		closeConditionPrice = order.Price * (1 + svc.config.MinimumResultInPercentToClosePosition/100)
-	} else {
-		closeConditionPrice = order.Price * (1 - svc.config.MinimumResultInPercentToClosePosition/100)
-	}
-	order.CloseConditionPrice = closeConditionPrice
-
 	return
 }

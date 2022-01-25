@@ -7,12 +7,3 @@ type Position struct {
 	Amount       float64
 	AskPrice     float64
 }
-
-type Config struct {
-	// DelayBetweenEachRun defines delay in milliseconds to wait before running new algorithm iteration
-	DelayBetweenEachRunInMilliSeconds int
-	// MinimumResultInPercentToClosePosition defines minimum result in percent to close position, position will not be closed if actual result is less than this value
-	MinimumResultInPercentToClosePosition float64
-	// PairToTradeByPlatform defines all pairs that should trade for each platform
-	PairToTradeByPlatform map[string][]string
-}

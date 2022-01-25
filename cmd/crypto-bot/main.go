@@ -35,7 +35,6 @@ func main() {
 
 	// Run trading algorithm
 	tradingService, err := trader.NewService(
-		nil, // used default config or from env
 		[]tradingPlatform.Api{
 			krakenApi,
 		},

@@ -2,6 +2,7 @@ package minOrMaxAlgo
 
 import (
 	"crypto-bot/internal/constant/tradingConst"
+	"crypto-bot/internal/model"
 	"crypto-bot/internal/service/tradingStrategy"
 	"fmt"
 )
@@ -24,7 +25,7 @@ func New() (algo *algorithm, err error) {
 	return
 }
 
-func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (view tradingStrategy.ShouldAddOrderView, err error) {
+func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (shouldOpen bool, order model.Order, err error) {
 	if len(form.PriceHistory) < algo.PricesNeeded() {
 		err = fmt.Errorf("not enough prices to take a decision, got %d but need %d",
 			len(form.PriceHistory), algo.PricesNeeded())
@@ -33,32 +34,24 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 	// do calculation only on last NumberOfPreviousPricesToCompare prices
 	pricesHistory := form.PriceHistory[len(form.PriceHistory)-algo.config.NumberOfPreviousPricesToCompare:]
 
-	// find min and max from price history
+	// find min from price history
 	minimumAsk := pricesHistory[0].Ask
-	maximumBid := pricesHistory[0].Bid
 	for _, price := range pricesHistory {
 		if price.Ask < minimumAsk {
 			minimumAsk = price.Ask
-		}
-		if price.Bid > maximumBid {
-			maximumBid = price.Bid
 		}
 	}
 
 	// fill order if conditions are ok
 	if form.IndexPrice.Ask <= minimumAsk {
-		view = tradingStrategy.ShouldAddOrderView{
-			ShouldAddOrder: true,
-			Side:           tradingConst.BuySideOrder,
-			Type:           tradingConst.LimitOrderType,
-			Price:          form.IndexPrice.Ask,
-		}
-	} else if form.IndexPrice.Bid >= maximumBid {
-		view = tradingStrategy.ShouldAddOrderView{
-			ShouldAddOrder: true,
-			Side:           tradingConst.SellSideOrder,
-			Type:           tradingConst.LimitOrderType,
-			Price:          form.IndexPrice.Bid,
+		price := form.IndexPrice.Ask * (1 - algo.config.PercentPriceBelowToBuy/100)
+		closeConditionPrice := price * (1 + algo.config.MinimumResultInPercentToClosePosition/100)
+		order = model.Order{
+			Side:                tradingConst.BuySideOrder,
+			Type:                tradingConst.LimitOrderType,
+			Price:               price,
+			CloseConditionType:  tradingConst.LimitCloseConditionType,
+			CloseConditionPrice: closeConditionPrice,
 		}
 	}
 
