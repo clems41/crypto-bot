@@ -9,12 +9,14 @@ const (
 	envNumberOfPreviousPricesToCompare        = "NB_PRICES"
 	envPercentPriceBelowToBuy                 = "PERCENT_BEFORE_BUY"
 	envMinimumResultInPercentBeforeCloseOrder = "MIN_RESULT"
+	envMaxOpenedOrdersByPair                  = "MAX_ORDER_PAIR"
 )
 
 const (
 	defaultNumberOfPreviousPricesToCompare        = "1" // 300 * 5000ms --> 25min
 	defaultPercentPriceBelowToBuy                 = "0.5"
 	defaultMinimumResultInPercentBeforeCloseOrder = "0.7"
+	defaultMaxOpenedOrdersByPair                  = "1"
 )
 
 type Config struct {
@@ -25,9 +27,16 @@ type Config struct {
 	PercentPriceBelowToBuy float64
 	// MinimumResultInPercentToClosePosition defines minimum result in percent to close position, position will not be closed if actual result is less than this value
 	MinimumResultInPercentToClosePosition float64
+	// MaxOpenedOrdersByPair return limit of opened orders by pair
+	MaxOpenedOrdersByPair int
 }
 
 func GetConfigFromEnvOrDefault() (config *Config, err error) {
+	maxOpenedOrdersByPairStr := envUtils.GetFromEnvOrDefault(envMaxOpenedOrdersByPair, defaultMaxOpenedOrdersByPair)
+	maxOpenedOrdersByPair, err := strconv.Atoi(maxOpenedOrdersByPairStr)
+	if err != nil {
+		return
+	}
 	numberOfPreviousPricesToCompareStr := envUtils.GetFromEnvOrDefault(envNumberOfPreviousPricesToCompare, defaultNumberOfPreviousPricesToCompare)
 	numberOfPreviousPricesToCompare, err := strconv.Atoi(numberOfPreviousPricesToCompareStr)
 	if err != nil {
@@ -47,6 +56,7 @@ func GetConfigFromEnvOrDefault() (config *Config, err error) {
 		NumberOfPreviousPricesToCompare:       numberOfPreviousPricesToCompare,
 		PercentPriceBelowToBuy:                percentPriceBelowToBuy,
 		MinimumResultInPercentToClosePosition: minimumResultInPercentBeforeCloseOrder,
+		MaxOpenedOrdersByPair:                 maxOpenedOrdersByPair,
 	}
 	return
 }

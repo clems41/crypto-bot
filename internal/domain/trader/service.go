@@ -2,7 +2,6 @@ package trader
 
 import (
 	"crypto-bot/internal/constant/timeConst"
-	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"crypto-bot/internal/service/tradingPlatform"
@@ -21,21 +20,23 @@ type Service interface {
 
 	/* Private methods */
 	applyTradingAlgorithm() (err error)
+	getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, err error)
+	updateOpenedOrders(platform tradingPlatform.Api) (err error)
 	updateBalance(platform tradingPlatform.Api) (err error)
-	updateIndexPrice(platform tradingPlatform.Api) (err error)
+	updateIndexPrice(platform tradingPlatform.Api, pairs []string) (err error)
 	addOrder(platform tradingPlatform.Api, order *model.Order) (err error)
-	fillOrder(platform tradingPlatform.Api, order *model.Order) (err error)
 }
 
 type service struct {
-	quitChannel                        chan bool                         // quit goroutine when program exit
-	platformApis                       map[string]tradingPlatform.Api    // communicate with trading platforms
-	repo                               repository.Repository             // use to store data
-	algo                               tradingStrategy.Algo              // use to know if order should be open based on prices
-	startTime                          time.Time                         // datetime when lago has been started
-	initialBalanceByPlatformByCurrency map[string]map[string]float64     // initial balance before opening first position by platform and by currency
-	balanceByPlatform                  map[string]model.Balance          // current balance
-	indexPriceByPlatformByPair         map[string]map[string]model.Price // store last index got from platform
+	quitChannel                        chan bool                           // quit goroutine when program exit
+	platformApis                       map[string]tradingPlatform.Api      // communicate with trading platforms
+	repo                               repository.Repository               // use to store data
+	algo                               tradingStrategy.Algo                // use to know if order should be open based on prices
+	startTime                          time.Time                           // datetime when lago has been started
+	initialBalanceByPlatformByCurrency map[string]map[string]float64       // initial balance before opening first order by platform and by currency
+	balanceByPlatform                  map[string]model.Balance            // current balance
+	indexPriceByPlatformByPair         map[string]map[string]model.Price   // store last index got from platform
+	openedOrdersByPlatformByPair       map[string]map[string][]model.Order // store opened orders calculating amount to invest by pair
 }
 
 func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo) (Service, error) {
@@ -51,6 +52,7 @@ func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, 
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
 		balanceByPlatform:                  make(map[string]model.Balance),
 		indexPriceByPlatformByPair:         make(map[string]map[string]model.Price),
+		openedOrdersByPlatformByPair:       make(map[string]map[string][]model.Order),
 	}, nil
 }
 
@@ -142,21 +144,32 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 	logger.Infof("-------------------  New run %s  ------------------------------", time.Now().Format(timeConst.DefaultFormatTimeLayout))
 	for platformName, platform := range svc.platformApis {
 		logger.Infof("--  %s  --", platformName)
-
-		// update prices for all pairs and platforms
-		err = svc.updateIndexPrice(platform)
-		if err != nil {
-			return
-		}
-
 		// update balance
 		err = svc.updateBalance(platform)
 		if err != nil {
 			return
 		}
 
+		// update open orders form platform
+		err = svc.updateOpenedOrders(platform)
+		if err != nil {
+			return
+		}
+
+		// get trade info (pairs, amount, etc...)
+		tradeInfo, err := svc.getTradeInfo(platform)
+		if err != nil {
+			return
+		}
+
+		// update prices for all pairs and platforms
+		err = svc.updateIndexPrice(platform, tradeInfo.PairsToTrade)
+		if err != nil {
+			return
+		}
+
 		// Loop over all pairs to trade
-		for _, pair := range pairsToTradeByPlatform[platformName] {
+		for _, pair := range tradeInfo.PairsToTrade {
 			// get prices history based on interval config
 			var prices []model.Price
 			priceForm := repository.GetPriceHistoryForm{
@@ -183,8 +196,11 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
 			openForm := tradingStrategy.ShouldAddOrderForm{
-				PriceHistory: prices,
-				IndexPrice:   indexPrice,
+				PriceHistory:       prices,
+				IndexPrice:         indexPrice,
+				Pair:               pair,
+				CurrentBalance:     svc.balanceByPlatform[platformName].ValueByCurrency,
+				OpenedOrdersByPair: svc.openedOrdersByPlatformByPair[platformName],
 			}
 			var order model.Order
 			var shouldOpenOrder bool
@@ -192,10 +208,8 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			if err != nil {
 				return
 			}
-
 			// open order if conditions are ok
 			if shouldOpenOrder {
-				order.Pair = pair
 				err = svc.addOrder(platform, &order)
 				if err != nil {
 					return
@@ -203,6 +217,39 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			}
 		}
 	}
+	return
+}
+
+func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
+	openedOrders, err := platform.GetOpenOrders()
+	if err != nil {
+		return
+	}
+	for _, openedOrder := range openedOrders {
+		if svc.openedOrdersByPlatformByPair[platform.Name()] == nil {
+			svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
+		}
+		svc.openedOrdersByPlatformByPair[platform.Name()][openedOrder.Pair] = append(
+			svc.openedOrdersByPlatformByPair[platform.Name()][openedOrder.Pair], openedOrder)
+	}
+	return
+}
+
+func (svc *service) getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, err error) {
+	// count number of opened orders by pair
+	openedOrdersByPlatform, ok := svc.openedOrdersByPlatformByPair[platform.Name()]
+	if !ok {
+		return info, fmt.Errorf("cannot find opened orders for paltform %s", platform.Name())
+	}
+
+	// remove from pairsToTrade all pair that has been reached maxOpenedOrderByPair
+	for _, pair := range initialPairsToTradeByPlatform[platform.Name()] {
+		if len(openedOrdersByPlatform[pair]) < svc.algo.MaxOpenedOrdersByPair() {
+			info.PairsToTrade = append(info.PairsToTrade, pair)
+		}
+	}
+
+	logger.Infof("Following pairs will be traded : %v", info.PairsToTrade)
 	return
 }
 
@@ -230,11 +277,7 @@ func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
 	return
 }
 
-func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
-	pairs, ok := pairsToTradeByPlatform[platform.Name()]
-	if !ok {
-		return fmt.Errorf("cannot find pairs for platform %s", platform.Name())
-	}
+func (svc *service) updateIndexPrice(platform tradingPlatform.Api, pairs []string) (err error) {
 	prices, err := platform.GetIndexPrices(pairs...)
 	if err != nil {
 		return
@@ -254,14 +297,8 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 }
 
 func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (err error) {
-	// fill missing order fields
-	err = svc.fillOrder(platform, order)
-	if err != nil {
-		return
-	}
-
 	// don't open order if balance is less or equal to 0
-	if order.Amount <= 0 {
+	if order.Amount <= 0 || order.Volume <= 0 {
 		return
 	}
 
@@ -282,28 +319,6 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 	err = svc.repo.StoreOrder(order)
 	if err != nil {
 		return
-	}
-	return
-}
-
-func (svc *service) fillOrder(platform tradingPlatform.Api, order *model.Order) (err error) {
-	// get current balance needed for pair to trade
-	currency, ok := tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)
-	if !ok {
-		return fmt.Errorf("cannot find currency for pair %s and side %s", order.Pair, order.Side)
-	}
-	balance, ok := svc.balanceByPlatform[platform.Name()].ValueByCurrency[currency]
-	if !ok {
-		return fmt.Errorf("cannot find balance for currency %s", currency)
-	}
-
-	// fill volume based on price and amount
-	if order.Side == tradingConst.BuySideOrder {
-		order.Amount = balance
-		order.Volume = balance / order.Price
-	} else {
-		order.Amount = balance * order.Price
-		order.Volume = balance
 	}
 	return
 }

@@ -43,10 +43,12 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	// fill order if conditions are ok
+	// TODO fill amount and volume
 	if form.IndexPrice.Ask <= minimumAsk {
 		price := form.IndexPrice.Ask * (1 - algo.config.PercentPriceBelowToBuy/100)
 		closeConditionPrice := price * (1 + algo.config.MinimumResultInPercentToClosePosition/100)
 		order = model.Order{
+			Pair:                form.Pair,
 			Side:                tradingConst.BuySideOrder,
 			Type:                tradingConst.LimitOrderType,
 			Price:               price,
@@ -60,4 +62,8 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 
 func (algo *algorithm) PricesNeeded() (numberOfPrices int) {
 	return algo.config.NumberOfPreviousPricesToCompare
+}
+
+func (algo *algorithm) MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int) {
+	return algo.config.MaxOpenedOrdersByPair
 }

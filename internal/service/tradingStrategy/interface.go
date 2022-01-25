@@ -8,4 +8,6 @@ type Algo interface {
 	// PricesNeeded return number of prices needed by ShouldAddOrder to work.
 	// If ShouldAddOrder got fewer prices than value returned by PricesNeeded, ShouldAddOrder will return an error.
 	PricesNeeded() (numberOfPrices int)
+	// MaxOpenedOrdersByPair return limit of opened order by pair
+	MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int)
 }
