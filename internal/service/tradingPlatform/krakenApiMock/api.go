@@ -99,12 +99,6 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	return
 }
 
-// CancelAllOrders with mock all orders will be instantaneously open, executed then close.
-// There will be no orders left to cancel
-func (api *krakenApi) CancelAllOrders() (view tradingPlatform.CancelAllOrdersView, err error) {
-	return
-}
-
 func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err error) {
 	// get response form kraken api
 	var krakenPairs []string

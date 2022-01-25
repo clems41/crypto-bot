@@ -1,6 +1,8 @@
 package model
 
 import (
+	"crypto-bot/internal/constant/timeConst"
+	"fmt"
 	"github.com/go-playground/validator/v10"
 	"time"
 )
@@ -20,4 +22,9 @@ func (price *Price) Validate() (err error) {
 		return
 	}
 	return
+}
+
+func (price Price) String() (str string) {
+	return fmt.Sprintf("%s at %s on %s --> ask=%f | bid=%f", price.Pair, price.Date.Format(timeConst.DefaultFormatTimeLayout),
+		price.PlatformName, price.Ask, price.Bid)
 }

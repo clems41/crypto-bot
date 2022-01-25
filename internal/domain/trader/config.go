@@ -13,7 +13,7 @@ const (
 
 const (
 	defaultDelayBetweenEachRunInMilliSeconds = "5000"
-	defaultIntervalToComparePricesInMinutes  = "60" // --> 1 hour
+	defaultIntervalToComparePricesInMinutes  = "60" // --> 60 * 5000 --> 300 sec
 )
 
 var (

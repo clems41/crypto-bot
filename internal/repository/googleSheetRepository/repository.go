@@ -2,6 +2,7 @@ package googleSheetRepository
 
 import (
 	"context"
+	"crypto-bot/internal/constant/timeConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"fmt"
@@ -48,7 +49,7 @@ func (r *repo) StorePrice(price *model.Price) (err error) {
 	valueRange := sheets.ValueRange{
 		Values: [][]interface{}{
 			{
-				price.Date.Format(time.RFC3339),
+				price.Date.Format(timeConst.DefaultFormatTimeLayout),
 				price.PlatformName,
 				price.Pair,
 				price.Ask,
@@ -77,7 +78,7 @@ func (r *repo) StoreBalance(balance *model.Balance) (err error) {
 				{
 					balance.PlatformName,
 					fmt.Sprintf("%v", balance.ValueByCurrency),
-					balance.UpdatedAt.Format(time.RFC3339),
+					balance.UpdatedAt.Format(timeConst.DefaultFormatTimeLayout),
 				},
 			},
 		}
@@ -118,8 +119,8 @@ func (r *repo) StoreOrder(order *model.Order) (err error) {
 				order.Price,
 				order.Amount,
 				order.Leverage,
-				//order.CloseConditionType,
-				//order.CloseConditionPrice,
+				order.CloseConditionType,
+				order.CloseConditionPrice,
 				order.Fees,
 				order.Status,
 			},

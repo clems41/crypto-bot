@@ -1,6 +1,7 @@
 package trader
 
 import (
+	"crypto-bot/internal/constant/timeConst"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
@@ -116,13 +117,6 @@ func (svc *service) Stop() (err error) {
 	// Cancel all open orders
 	for platformName, platform := range svc.platformApis {
 		logger.Infof("--  %s  --", platformName)
-		var view tradingPlatform.CancelAllOrdersView
-		view, err = platform.CancelAllOrders()
-		if err != nil {
-			return
-		}
-		logger.Infof("Closing %d orders", view.Count)
-
 		// Get all orders
 		var orders []model.Order
 		orders, err = platform.GetAllOrders()
@@ -130,7 +124,7 @@ func (svc *service) Stop() (err error) {
 			return
 		}
 		for _, order := range orders {
-			logger.Infof("Order %v", order)
+			logger.Info(order)
 		}
 
 		// Get current balance
@@ -142,26 +136,23 @@ func (svc *service) Stop() (err error) {
 		// Calculate estimated profit
 		endTime := time.Now()
 		tradingDuration := endTime.Sub(svc.startTime)
-		var initialBalance, finalBalance float64
 		for currency, initialBalanceCurrency := range svc.initialBalanceByPlatformByCurrency[platform.Name()] {
-			initialBalance += initialBalanceCurrency
 			finalBalanceCurrency, ok := svc.balanceByPlatform[platformName].ValueByCurrency[currency]
 			if !ok {
 				return fmt.Errorf("cannot find balance for currency %s", currency)
 			}
-			finalBalance += finalBalanceCurrency
+			oneDayProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 24*time.Hour)
+			oneMonthProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 30*24*time.Hour)
+			oneYearProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 365*24*time.Hour)
+			logger.Infof("With initial balance for currency %s of %f, profit for one day would be %f, for one month %f and for one year %f",
+				currency, initialBalanceCurrency, oneDayProfit, oneMonthProfit, oneYearProfit)
 		}
-		oneDayProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 24*time.Hour)
-		oneMonthProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 30*24*time.Hour)
-		oneYearProfit := tradingUtils.EstimateProfit(initialBalance, finalBalance, tradingDuration, 365*24*time.Hour)
-		logger.Infof("With initial balance of %0.2f, profit for one day would be %0.2f, for one month %0.2f and for one year %0.2f",
-			initialBalance, oneDayProfit, oneMonthProfit, oneYearProfit)
 	}
 	return
 }
 
 func (svc *service) applyTradingAlgorithm() (err error) {
-	logger.Infof("-------------------  New run %s  ------------------------------", time.Now().Format(time.RFC3339))
+	logger.Infof("-------------------  New run %s  ------------------------------", time.Now().Format(timeConst.DefaultFormatTimeLayout))
 	for platformName, platform := range svc.platformApis {
 		logger.Infof("--  %s  --", platformName)
 
@@ -250,8 +241,7 @@ func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
 		svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
 		svc.initialBalanceByPlatformByCurrency[platform.Name()] = svc.balanceByPlatform[platform.Name()].ValueByCurrency
 	}
-	logger.Infof("Balance %v at %s", svc.balanceByPlatform[platform.Name()].ValueByCurrency,
-		svc.balanceByPlatform[platform.Name()].UpdatedAt.Format(time.RFC3339))
+	logger.Info(svc.balanceByPlatform[platform.Name()])
 	svc.balanceNeedToBeUpdated = false
 	return
 }
@@ -274,8 +264,7 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api) (err error) {
 			svc.indexPriceByPlatformByPair[platform.Name()] = make(map[string]*model.Price)
 		}
 		svc.indexPriceByPlatformByPair[platform.Name()][price.Pair] = &price
-		logger.Infof("%s ask=%f bid=%f at %s", price.Pair, price.Ask,
-			price.Bid, price.Date.Format(time.RFC3339))
+		logger.Info(price)
 	}
 	return
 }
@@ -304,7 +293,7 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 	if err != nil {
 		return
 	}
-	logger.Infof("New order has been added %v", *order)
+	logger.Info(*order)
 	return
 }
 
