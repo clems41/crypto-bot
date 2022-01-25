@@ -15,8 +15,10 @@ const (
 )
 
 const (
-	priceParameter    = "price"
-	validateParameter = "validate"
+	priceParameter          = "price"
+	validateParameter       = "validate"
+	closeOrderTypeParameter = "close[ordertype]"
+	closePriceParameter     = "close[price]"
 )
 
 var (

@@ -7,13 +7,13 @@ import (
 )
 
 const (
-	envDelayBetweenEachRunInMilliSeconds = "DELAY_RUN_MS"
-	envIntervalToComparePricesInMinutes  = "INTERVAL_PRICES"
+	envDelayBetweenEachRunInMilliSeconds      = "DELAY_RUN_MS"
+	envMinimumResultInPercentBeforeCloseOrder = "MIN_RESULT"
 )
 
 const (
-	defaultDelayBetweenEachRunInMilliSeconds = "5000"
-	defaultIntervalToComparePricesInMinutes  = "60" // --> 60 * 5000 --> 300 sec
+	defaultDelayBetweenEachRunInMilliSeconds      = "5000"
+	defaultMinimumResultInPercentBeforeCloseOrder = "0.7"
 )
 
 var (
@@ -28,19 +28,19 @@ var (
 
 func GetConfigFromEnvOrDefault() (config Config, err error) {
 	delayBetweenEachRunInMilliSecondsStr := envUtils.GetFromEnvOrDefault(envDelayBetweenEachRunInMilliSeconds, defaultDelayBetweenEachRunInMilliSeconds)
-	intervalToComparePricesInMinutesStr := envUtils.GetFromEnvOrDefault(envIntervalToComparePricesInMinutes, defaultIntervalToComparePricesInMinutes)
+	minimumResultInPercentBeforeCloseOrderStr := envUtils.GetFromEnvOrDefault(envMinimumResultInPercentBeforeCloseOrder, defaultMinimumResultInPercentBeforeCloseOrder)
 	delayBetweenEachRunInMilliSeconds, err := strconv.Atoi(delayBetweenEachRunInMilliSecondsStr)
 	if err != nil {
 		return
 	}
-	intervalToComparePricesInMinutes, err := strconv.Atoi(intervalToComparePricesInMinutesStr)
+	minimumResultInPercentBeforeCloseOrder, err := strconv.ParseFloat(minimumResultInPercentBeforeCloseOrderStr, 64)
 	if err != nil {
 		return
 	}
 	config = Config{
-		DelayBetweenEachRunInMilliSeconds: delayBetweenEachRunInMilliSeconds,
-		IntervalToComparePricesInMinutes:  intervalToComparePricesInMinutes,
-		PairToTradeByPlatform:             pairsToTradeByPlatform,
+		DelayBetweenEachRunInMilliSeconds:     delayBetweenEachRunInMilliSeconds,
+		MinimumResultInPercentToClosePosition: minimumResultInPercentBeforeCloseOrder,
+		PairToTradeByPlatform:                 pairsToTradeByPlatform,
 	}
 	return
 }

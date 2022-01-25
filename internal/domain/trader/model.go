@@ -13,8 +13,6 @@ type Config struct {
 	DelayBetweenEachRunInMilliSeconds int
 	// MinimumResultInPercentToClosePosition defines minimum result in percent to close position, position will not be closed if actual result is less than this value
 	MinimumResultInPercentToClosePosition float64
-	// IntervalToComparePricesInMinutes defines duration in minutes to get prices history before making the choice to add new order
-	IntervalToComparePricesInMinutes int
 	// PairToTradeByPlatform defines all pairs that should trade for each platform
 	PairToTradeByPlatform map[string][]string
 }

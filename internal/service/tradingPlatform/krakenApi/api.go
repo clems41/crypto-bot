@@ -4,7 +4,6 @@ import (
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/service/tradingPlatform"
-	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"
@@ -53,16 +52,18 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	if !ok {
 		return fmt.Errorf("cannot find order type for %s", order.Type)
 	}
+	closeOrderType, ok := typeConverter[order.Type]
+	if !ok {
+		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
+	}
 	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), map[string]string{
-		priceParameter:    fmt.Sprintf("%f", order.Price),
-		validateParameter: "true",
+		priceParameter:          fmt.Sprintf("%f", order.Price),
+		closeOrderTypeParameter: closeOrderType,
+		closePriceParameter:     fmt.Sprintf("%f", order.CloseConditionPrice),
 	})
 	if err != nil {
 		return
 	}
-
-	// TODO fill order from platform orders info
-	logger.Infof("Orders %v has been added to %s : %s", api.Name(), response.TransactionIds, response.Description.Order)
 
 	// fill order as mock
 	if len(response.TransactionIds) > 0 {

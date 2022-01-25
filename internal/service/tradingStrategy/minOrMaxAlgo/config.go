@@ -10,7 +10,7 @@ const (
 )
 
 const (
-	defaultNumberOfPreviousPricesToCompare = "60" // 1 price / min
+	defaultNumberOfPreviousPricesToCompare = "300" // 300 * 5000ms --> 25min
 )
 
 type Config struct {

@@ -34,10 +34,12 @@ var (
 
 var (
 	typeConverter = map[string]string{
-		tradingConst.MarketOrderType:     krakenapi.OTMarket,
-		tradingConst.LimitOrderType:      krakenapi.OTLimit,
-		tradingConst.StopLossOrderType:   krakenapi.OTStopLoss,
-		tradingConst.TakeProfitOrderType: krakenapi.OTTakeProfi,
+		tradingConst.MarketOrderType:        krakenapi.OTMarket,
+		tradingConst.LimitOrderType:         krakenapi.OTLimit,
+		tradingConst.StopLossOrderType:      krakenapi.OTStopLoss,
+		tradingConst.TakeProfitOrderType:    krakenapi.OTTakeProfi,
+		tradingConst.NoneCloseConditionType: "",
+		"":                                  "",
 	}
 )
 

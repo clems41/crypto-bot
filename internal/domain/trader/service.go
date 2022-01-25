@@ -37,7 +37,6 @@ type service struct {
 	initialBalanceByPlatformByCurrency map[string]map[string]float64      // initial balance before opening first position by platform and by currency
 	balanceByPlatform                  map[string]*model.Balance          // current balance
 	indexPriceByPlatformByPair         map[string]map[string]*model.Price // store last index got from platform
-	balanceNeedToBeUpdated             bool                               // use to know if request should be sent to platform to know actual balance
 }
 
 func NewService(config *Config, platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo) (Service, error) {
@@ -61,7 +60,6 @@ func NewService(config *Config, platformApis []tradingPlatform.Api, repo reposit
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
 		balanceByPlatform:                  make(map[string]*model.Balance),
 		indexPriceByPlatformByPair:         make(map[string]map[string]*model.Price),
-		balanceNeedToBeUpdated:             true,
 	}, nil
 }
 
@@ -175,7 +173,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			priceForm := repository.GetPriceHistoryForm{
 				PlatformName: platformName,
 				Pair:         pair,
-				SinceTime:    time.Now().Add(-time.Duration(svc.config.IntervalToComparePricesInMinutes) * time.Minute),
+				SinceTime:    time.Now().Add(-time.Duration(svc.algo.PricesNeeded()*svc.config.DelayBetweenEachRunInMilliSeconds) * time.Millisecond),
 			}
 			prices, err = svc.repo.GetPriceHistory(priceForm)
 			if err != nil {
@@ -224,9 +222,6 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
-	if !svc.balanceNeedToBeUpdated {
-		return
-	}
 	err = platform.RefreshBalance(svc.balanceByPlatform[platform.Name()])
 	if err != nil {
 		return
@@ -242,7 +237,6 @@ func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
 		svc.initialBalanceByPlatformByCurrency[platform.Name()] = svc.balanceByPlatform[platform.Name()].ValueByCurrency
 	}
 	logger.Info(svc.balanceByPlatform[platform.Name()])
-	svc.balanceNeedToBeUpdated = false
 	return
 }
 
@@ -286,7 +280,12 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 	if err != nil {
 		return
 	}
-	svc.balanceNeedToBeUpdated = true
+
+	// update balance
+	err = svc.updateBalance(platform)
+	if err != nil {
+		return
+	}
 
 	// store order into repository
 	err = svc.repo.StoreOrder(order)
@@ -316,6 +315,16 @@ func (svc *service) fillOrder(platform tradingPlatform.Api, order *model.Order) 
 		order.Amount = balance * order.Price
 		order.Volume = balance
 	}
+
+	// fill close condition
+	order.CloseConditionType = tradingConst.TakeProfitCloseConditionType
+	var closeConditionPrice float64
+	if order.Side == tradingConst.BuySideOrder {
+		closeConditionPrice = order.Price * (1 + svc.config.MinimumResultInPercentToClosePosition/100)
+	} else {
+		closeConditionPrice = order.Price * (1 - svc.config.MinimumResultInPercentToClosePosition/100)
+	}
+	order.CloseConditionPrice = closeConditionPrice
 
 	return
 }
