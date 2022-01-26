@@ -1,9 +1,9 @@
 package krakenApiMock
 
 import (
+	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
-	"crypto-bot/internal/service/tradingPlatform"
 	"crypto-bot/pkg/utils/envUtils"
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"

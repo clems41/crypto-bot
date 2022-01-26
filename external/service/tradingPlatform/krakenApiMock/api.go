@@ -1,9 +1,10 @@
 package krakenApiMock
 
 import (
+	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
-	"crypto-bot/internal/service/tradingPlatform"
+	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
@@ -61,7 +62,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	if !ok {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
 	}
-	_, err = api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), map[string]string{
+	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), map[string]string{
 		priceParameter:          fmt.Sprintf("%f", order.Price),
 		validateParameter:       "true",
 		closeOrderTypeParameter: closeOrderType,
@@ -70,31 +71,13 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	if err != nil {
 		return
 	}
+	logger.Infof("Order sent to kraken api : %v", response.Description)
 
 	// fill order as mock
 	fees := order.Amount * takerFees / 100
-	volumeAfterFees := order.Volume * (1 - takerFees/100)
-	amountAfterFees := order.Amount * (1 - takerFees/100)
 	order.ID = uuid.New().String()
 	order.Fees = fees
-	order.Status = tradingConst.CloseOrderStatus
-
-	// update balance mock
-	currencyNeeded, ok := tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)
-	if !ok {
-		return fmt.Errorf("cannot find currency for pair %s", order.Pair)
-	}
-	currencyGot, ok := tradingUtils.CurrencyGotAfterTradingPair(order.Pair, order.Side)
-	if !ok {
-		return fmt.Errorf("cannot find currency for pair %s", order.Pair)
-	}
-	if order.Side == tradingConst.BuySideOrder {
-		api.balanceByCurrencyMock[currencyNeeded] -= order.Amount
-		api.balanceByCurrencyMock[currencyGot] += volumeAfterFees
-	} else {
-		api.balanceByCurrencyMock[currencyNeeded] -= order.Volume
-		api.balanceByCurrencyMock[currencyGot] += amountAfterFees
-	}
+	order.Status = tradingConst.OpenOrderStatus
 
 	// add orders in memory
 	api.orders = append(api.orders, order)
@@ -152,6 +135,10 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 }
 
 func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
+	err = api.updateOrdersBasedOnPrice()
+	if err != nil {
+		return
+	}
 	for _, order := range api.orders {
 		if order.Status == tradingConst.OpenOrderStatus {
 			if order != nil {
@@ -175,5 +162,99 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 	balance.ValueByCurrency = api.balanceByCurrencyMock
 	balance.UpdatedAt = time.Now()
 	balance.PlatformName = api.Name()
+	return
+}
+
+// updateOrdersBasedOnPrice will update orders like a real platform will do.
+// Close open orders if price has reached the one fixed in order.
+// Open new order if close condition is defined.
+func (api *krakenApi) updateOrdersBasedOnPrice() (err error) {
+	// find all pair currently in open order
+	var pairsPriceNeeded []string
+	for _, order := range api.orders {
+		if order.Status == tradingConst.OpenOrderStatus {
+			pairsPriceNeeded = append(pairsPriceNeeded, order.Pair)
+		}
+	}
+
+	// find prices for pairs currently in open orders
+	var prices []model.Price
+	if len(pairsPriceNeeded) > 0 {
+		prices, err = api.GetIndexPrices(pairsPriceNeeded...)
+		if err != nil {
+			return
+		}
+	}
+
+	// map prices by pair
+	indexPricesByPair := make(map[string]model.Price)
+	for _, price := range prices {
+		indexPricesByPair[price.Pair] = price
+	}
+
+	// update open orders and create new one if conditions are reached
+	for orderIdx, order := range api.orders {
+		if order.Status == tradingConst.OpenOrderStatus {
+			// find if order should be closed
+			var shouldClose bool
+			if order.Side == tradingConst.BuySideOrder {
+				if order.Price >= indexPricesByPair[order.Pair].Ask {
+					shouldClose = true
+				}
+			} else {
+				if order.Price <= indexPricesByPair[order.Pair].Bid {
+					shouldClose = true
+				}
+			}
+
+			// if yes, close it and update balance
+			if shouldClose {
+				order.Status = tradingConst.CloseOrderStatus
+				var currencyNeeded, currencyGot string
+				var ok bool
+				currencyNeeded, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)
+				if !ok {
+					return fmt.Errorf("cannot find currency needed for pair %s ans side %s", order.Pair, order.Side)
+				}
+				currencyGot, ok = tradingUtils.CurrencyGotAfterTradingPair(order.Pair, order.Side)
+				if !ok {
+					return fmt.Errorf("cannot find currency got for pair %s ans side %s", order.Pair, order.Side)
+				}
+				if order.Side == tradingConst.BuySideOrder {
+					api.balanceByCurrencyMock[currencyNeeded] -= order.Amount
+					api.balanceByCurrencyMock[currencyGot] += order.Volume
+				} else {
+					api.balanceByCurrencyMock[currencyNeeded] -= order.Volume
+					api.balanceByCurrencyMock[currencyGot] += order.Amount
+				}
+				api.orders[orderIdx] = order
+			}
+
+			// if order close condition are specified, create new order based on it
+			if order.CloseConditionType != "" && order.CloseConditionType != tradingConst.NoneCloseConditionType {
+				if order.CloseConditionType == tradingConst.TakeProfitCloseConditionType ||
+					order.CloseConditionType == tradingConst.LimitCloseConditionType {
+					var closeOrderSide string
+					if order.Side == tradingConst.BuySideOrder {
+						closeOrderSide = tradingConst.SellSideOrder
+					} else {
+						closeOrderSide = tradingConst.BuySideOrder
+					}
+					newOrder := model.Order{
+						Date:   time.Now(),
+						Pair:   order.Pair,
+						Side:   closeOrderSide,
+						Volume: order.Volume,
+						Type:   order.CloseConditionType,
+						Price:  order.CloseConditionPrice,
+					}
+					err = api.AddOrder(&newOrder)
+					if err != nil {
+						return
+					}
+				}
+			}
+		}
+	}
 	return
 }

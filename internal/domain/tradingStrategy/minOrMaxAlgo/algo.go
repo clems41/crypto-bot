@@ -2,12 +2,12 @@ package minOrMaxAlgo
 
 import (
 	"crypto-bot/internal/constant/tradingConst"
+	tradingStrategy2 "crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
-	"crypto-bot/internal/service/tradingStrategy"
 	"fmt"
 )
 
-var _ tradingStrategy.Algo = (*algorithm)(nil)
+var _ tradingStrategy2.Algo = (*algorithm)(nil)
 
 type algorithm struct {
 	config *Config
@@ -25,7 +25,7 @@ func New() (algo *algorithm, err error) {
 	return
 }
 
-func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (shouldOpen bool, order model.Order, err error) {
+func (algo *algorithm) ShouldAddOrder(form tradingStrategy2.ShouldAddOrderForm) (shouldOpen bool, order model.Order, err error) {
 	if len(form.PriceHistory) < algo.PricesNeeded() {
 		err = fmt.Errorf("not enough prices to take a decision, got %d but need %d",
 			len(form.PriceHistory), algo.PricesNeeded())

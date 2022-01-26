@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto-bot/external/service/tradingPlatform"
+	"crypto-bot/external/service/tradingPlatform/krakenApiMock"
 	"crypto-bot/internal/domain/trader"
+	"crypto-bot/internal/domain/tradingStrategy/minOrMaxAlgo"
 	"crypto-bot/internal/repository/googleSheetRepository"
-	"crypto-bot/internal/service/tradingPlatform"
-	"crypto-bot/internal/service/tradingPlatform/krakenApiMock"
-	"crypto-bot/internal/service/tradingStrategy/minOrMaxAlgo"
 	"crypto-bot/pkg/logger"
 	"os"
 	"os/signal"

@@ -1,11 +1,11 @@
 package trader
 
 import (
+	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/internal/constant/timeConst"
+	tradingStrategy2 "crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
-	"crypto-bot/internal/service/tradingPlatform"
-	"crypto-bot/internal/service/tradingStrategy"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
@@ -31,7 +31,7 @@ type service struct {
 	quitChannel                        chan bool                           // quit goroutine when program exit
 	platformApis                       map[string]tradingPlatform.Api      // communicate with trading platforms
 	repo                               repository.Repository               // use to store data
-	algo                               tradingStrategy.Algo                // use to know if order should be open based on prices
+	algo                               tradingStrategy2.Algo               // use to know if order should be open based on prices
 	startTime                          time.Time                           // datetime when lago has been started
 	initialBalanceByPlatformByCurrency map[string]map[string]float64       // initial balance before opening first order by platform and by currency
 	balanceByPlatform                  map[string]model.Balance            // current balance
@@ -39,7 +39,7 @@ type service struct {
 	openedOrdersByPlatformByPair       map[string]map[string][]model.Order // store opened orders calculating amount to invest by pair
 }
 
-func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo) (Service, error) {
+func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy2.Algo) (Service, error) {
 	platformApisMap := make(map[string]tradingPlatform.Api)
 	for _, platformApi := range platformApis {
 		platformApisMap[platformApi.Name()] = platformApi
@@ -195,7 +195,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			if !ok {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
-			openForm := tradingStrategy.ShouldAddOrderForm{
+			openForm := tradingStrategy2.ShouldAddOrderForm{
 				PriceHistory:       prices,
 				IndexPrice:         indexPrice,
 				Pair:               pair,
