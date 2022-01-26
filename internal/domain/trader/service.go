@@ -157,7 +157,8 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 		}
 
 		// get trade info (pairs, amount, etc...)
-		tradeInfo, err := svc.getTradeInfo(platform)
+		var tradeInfo TradeInfo
+		tradeInfo, err = svc.getTradeInfo(platform)
 		if err != nil {
 			return
 		}
