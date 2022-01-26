@@ -3,6 +3,7 @@ package trader
 import (
 	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/internal/constant/timeConst"
+	"crypto-bot/internal/constant/tradingConst"
 	tradingStrategy2 "crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
@@ -199,9 +200,10 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			openForm := tradingStrategy2.ShouldAddOrderForm{
 				PriceHistory:       prices,
 				IndexPrice:         indexPrice,
-				Pair:               pair,
+				PairToTrade:        pair,
 				CurrentBalance:     svc.balanceByPlatform[platformName].ValueByCurrency,
 				OpenedOrdersByPair: svc.openedOrdersByPlatformByPair[platformName],
+				AllPairsTraded:     initialPairsToTradeByPlatform[platformName],
 			}
 			var order model.Order
 			var shouldOpenOrder bool
@@ -222,16 +224,22 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
-	openedOrders, err := platform.GetOpenOrders()
+	if svc.openedOrdersByPlatformByPair[platform.Name()] == nil {
+		svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
+	}
+	orders, err := platform.GetAllOrders()
 	if err != nil {
 		return
 	}
-	for _, openedOrder := range openedOrders {
-		if svc.openedOrdersByPlatformByPair[platform.Name()] == nil {
-			svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
+	for _, order := range orders {
+		err = svc.repo.StoreOrder(&order)
+		if err != nil {
+			return
 		}
-		svc.openedOrdersByPlatformByPair[platform.Name()][openedOrder.Pair] = append(
-			svc.openedOrdersByPlatformByPair[platform.Name()][openedOrder.Pair], openedOrder)
+		if order.Status == tradingConst.OpenOrderStatus {
+			svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair] = append(
+				svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair], order)
+		}
 	}
 	return
 }

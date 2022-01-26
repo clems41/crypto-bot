@@ -85,6 +85,9 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 }
 
 func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err error) {
+	if len(pairs) == 0 {
+		return
+	}
 	// get response form kraken api
 	var krakenPairs []string
 	for _, pair := range pairs {
@@ -150,6 +153,10 @@ func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 }
 
 func (api *krakenApi) GetAllOrders() (orders []model.Order, err error) {
+	err = api.updateOrdersBasedOnPrice()
+	if err != nil {
+		return
+	}
 	for _, order := range api.orders {
 		if order != nil {
 			orders = append(orders, *order)
@@ -228,29 +235,29 @@ func (api *krakenApi) updateOrdersBasedOnPrice() (err error) {
 					api.balanceByCurrencyMock[currencyGot] += order.Amount
 				}
 				api.orders[orderIdx] = order
-			}
 
-			// if order close condition are specified, create new order based on it
-			if order.CloseConditionType != "" && order.CloseConditionType != tradingConst.NoneCloseConditionType {
-				if order.CloseConditionType == tradingConst.TakeProfitCloseConditionType ||
-					order.CloseConditionType == tradingConst.LimitCloseConditionType {
-					var closeOrderSide string
-					if order.Side == tradingConst.BuySideOrder {
-						closeOrderSide = tradingConst.SellSideOrder
-					} else {
-						closeOrderSide = tradingConst.BuySideOrder
-					}
-					newOrder := model.Order{
-						Date:   time.Now(),
-						Pair:   order.Pair,
-						Side:   closeOrderSide,
-						Volume: order.Volume,
-						Type:   order.CloseConditionType,
-						Price:  order.CloseConditionPrice,
-					}
-					err = api.AddOrder(&newOrder)
-					if err != nil {
-						return
+				// if order close condition are specified, create new order based on it
+				if order.CloseConditionType != "" && order.CloseConditionType != tradingConst.NoneCloseConditionType {
+					if order.CloseConditionType == tradingConst.TakeProfitCloseConditionType ||
+						order.CloseConditionType == tradingConst.LimitCloseConditionType {
+						var closeOrderSide string
+						if order.Side == tradingConst.BuySideOrder {
+							closeOrderSide = tradingConst.SellSideOrder
+						} else {
+							closeOrderSide = tradingConst.BuySideOrder
+						}
+						newOrder := model.Order{
+							Date:   time.Now(),
+							Pair:   order.Pair,
+							Side:   closeOrderSide,
+							Volume: order.Volume,
+							Type:   order.CloseConditionType,
+							Price:  order.CloseConditionPrice,
+						}
+						err = api.AddOrder(&newOrder)
+						if err != nil {
+							return
+						}
 					}
 				}
 			}

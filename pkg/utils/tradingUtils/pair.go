@@ -1,6 +1,10 @@
 package tradingUtils
 
-import "crypto-bot/internal/constant/tradingConst"
+import (
+	"crypto-bot/internal/constant/tradingConst"
+	"crypto-bot/pkg/utils/mathUtils"
+	"fmt"
+)
 
 var (
 	currencyNeededByPairBySide = map[string]map[string]string{
@@ -23,6 +27,15 @@ var (
 	}
 )
 
+var (
+	maxDecimalByPair = map[string]int{
+		tradingConst.BtcEurPair:  1,
+		tradingConst.DashEurPair: 1,
+		tradingConst.EthEurPair:  1,
+		tradingConst.EthBtcPair:  1,
+	}
+)
+
 // CurrencyNeededToTradePair will return currency that must be used to trade specific pair and specific orderSide (buy or sell).
 // Ex : for ETH/EUR and buy --> EUR
 // Ex : for BTC/EUR and sell --> BTC
@@ -42,4 +55,12 @@ func CurrencyGotAfterTradingPair(pair string, orderSide string) (currency string
 	}
 	currency, ok = currencyNeededByPairBySide[pair][orderSide]
 	return
+}
+
+func RemovePriceDecimal(price float64, pair string) (result float64, err error) {
+	nbDecimal, ok := maxDecimalByPair[pair]
+	if !ok {
+		return result, fmt.Errorf("cannot find decimal for pair %s", pair)
+	}
+	return mathUtils.RemoveNDecimal(price, nbDecimal)
 }

@@ -10,6 +10,7 @@ const (
 	envPercentPriceBelowToBuy                 = "PERCENT_BEFORE_BUY"
 	envMinimumResultInPercentBeforeCloseOrder = "MIN_RESULT"
 	envMaxOpenedOrdersByPair                  = "MAX_ORDER_PAIR"
+	envMinimumAmount                          = "MIN_AMOUNT"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 	defaultPercentPriceBelowToBuy                 = "0.5"
 	defaultMinimumResultInPercentBeforeCloseOrder = "0.7"
 	defaultMaxOpenedOrdersByPair                  = "1"
+	defaultMinimumAmount                          = "10"
 )
 
 type Config struct {
@@ -29,6 +31,8 @@ type Config struct {
 	MinimumResultInPercentToClosePosition float64
 	// MaxOpenedOrdersByPair return limit of opened orders by pair
 	MaxOpenedOrdersByPair int
+	// MinimumAmount defines minimal amount to open order
+	MinimumAmount float64
 }
 
 func GetConfigFromEnvOrDefault() (config *Config, err error) {
@@ -52,11 +56,17 @@ func GetConfigFromEnvOrDefault() (config *Config, err error) {
 	if err != nil {
 		return
 	}
+	minimumAmountStr := envUtils.GetFromEnvOrDefault(envMinimumAmount, defaultMinimumAmount)
+	minimumAmount, err := strconv.ParseFloat(minimumAmountStr, 64)
+	if err != nil {
+		return
+	}
 	config = &Config{
 		NumberOfPreviousPricesToCompare:       numberOfPreviousPricesToCompare,
 		PercentPriceBelowToBuy:                percentPriceBelowToBuy,
 		MinimumResultInPercentToClosePosition: minimumResultInPercentBeforeCloseOrder,
 		MaxOpenedOrdersByPair:                 maxOpenedOrdersByPair,
+		MinimumAmount:                         minimumAmount,
 	}
 	return
 }

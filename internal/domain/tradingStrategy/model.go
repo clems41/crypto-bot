@@ -7,7 +7,8 @@ import "crypto-bot/internal/model"
 type ShouldAddOrderForm struct {
 	PriceHistory       []model.Price
 	IndexPrice         model.Price
-	Pair               string
+	PairToTrade        string
 	CurrentBalance     map[string]float64
 	OpenedOrdersByPair map[string][]model.Order
+	AllPairsTraded     []string
 }
