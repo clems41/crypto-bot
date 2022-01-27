@@ -106,8 +106,8 @@ func Open(customConfig *Config) (db *gorm.DB, err error) {
 		return nil, fmt.Errorf("database pointer is nil")
 	}
 
-	logger.Infof("Database connection has been successfully established to host %s with user %s",
-		dbConfig.Host, dbConfig.User)
+	logger.Infof("Database connection has been successfully established to host %s with user %s and database %s",
+		dbConfig.Host, dbConfig.User, dbConfig.DbName)
 
 	return
 }

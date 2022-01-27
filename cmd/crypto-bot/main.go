@@ -1,13 +1,13 @@
 package main
 
 import (
-	"context"
 	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/external/service/tradingPlatform/krakenApiMock"
 	"crypto-bot/internal/domain/trader"
 	"crypto-bot/internal/domain/tradingStrategy/minOrMaxAlgo"
-	"crypto-bot/internal/repository/googleSheetRepository"
+	"crypto-bot/internal/repository/postgresqlRepository"
 	"crypto-bot/pkg/logger"
+	"crypto-bot/pkg/sql/sqlConnection"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,17 +18,30 @@ func main() {
 	stopSignal := make(chan os.Signal, 1)
 	signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, os.Interrupt, os.Kill)
 
-	// Instantiate useful services and repositories
-	//mockTrading, err := tradingPlatformMock.New()
+	// Instantiate PostgresSQl database connection
+	DB, err := sqlConnection.Open(nil)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	/* Trading platforms */
 	krakenApi, err := krakenApiMock.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
-	minOrMaxAlgo, err := minOrMaxAlgo.New()
+
+	/* Algorithm */
+	algo, err := minOrMaxAlgo.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
-	googleSheetRepo, err := googleSheetRepository.New(context.Background())
+
+	/* Repository */
+	/*	googleSheetRepo, err := googleSheetRepository.New(context.Background())
+		if err != nil {
+			logger.Fatal(err)
+		}*/
+	postgresqlRepo, err := postgresqlRepository.New(DB)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -38,8 +51,8 @@ func main() {
 		[]tradingPlatform.Api{
 			krakenApi,
 		},
-		googleSheetRepo,
-		minOrMaxAlgo)
+		postgresqlRepo,
+		algo)
 	if err != nil {
 		logger.Fatal(err)
 	}
