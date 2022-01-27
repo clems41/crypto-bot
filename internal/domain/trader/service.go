@@ -94,7 +94,6 @@ func (svc *service) Start() (err error) {
 			err = svc.applyTradingAlgorithm()
 			if err != nil {
 				logger.Error(err)
-				svc.Stop()
 				return
 			}
 		}
@@ -120,6 +119,7 @@ func (svc *service) Stop() {
 		// Get current balance
 		err = svc.updateBalance(platform)
 		if err != nil {
+			logger.Error(err)
 			return
 		}
 
@@ -130,6 +130,7 @@ func (svc *service) Stop() {
 			finalBalanceCurrency, ok := svc.balanceByPlatform[platformName].ValueByCurrency[currency]
 			if !ok {
 				logger.Errorf("cannot find balance for currency %s", currency)
+				return
 			}
 			oneDayProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 24*time.Hour)
 			oneMonthProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 30*24*time.Hour)
