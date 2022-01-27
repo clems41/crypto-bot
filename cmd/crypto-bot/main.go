@@ -53,10 +53,6 @@ func main() {
 	// This code below will be executed only when signal is received (shutdown, cancel, kill, etc...).
 	// Add all closing methods here.
 	<-stopSignal
-	err = tradingService.Stop()
-	if err != nil {
-		logger.Fatal(err)
-	} else {
-		logger.Infof("Crypto bot has been stopped !")
-	}
+	tradingService.Stop()
+	logger.Infof("Crypto bot has been stopped !")
 }

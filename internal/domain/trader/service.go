@@ -17,7 +17,7 @@ var _ Service = (*service)(nil)
 
 type Service interface {
 	Start() (err error)
-	Stop() (err error)
+	Stop()
 
 	/* Private methods */
 	applyTradingAlgorithm() (err error)
@@ -94,6 +94,7 @@ func (svc *service) Start() (err error) {
 			err = svc.applyTradingAlgorithm()
 			if err != nil {
 				logger.Error(err)
+				svc.Stop()
 				return
 			}
 		}
@@ -101,15 +102,14 @@ func (svc *service) Start() (err error) {
 	return
 }
 
-func (svc *service) Stop() (err error) {
+func (svc *service) Stop() {
 	svc.quitChannel <- true
 
 	// Cancel all open orders
 	for platformName, platform := range svc.platformApis {
 		logger.Infof("--  %s  --", platformName)
 		// Get all orders
-		var orders []model.Order
-		orders, err = platform.GetAllOrders()
+		orders, err := platform.GetAllOrders()
 		if err != nil {
 			return
 		}
@@ -129,7 +129,7 @@ func (svc *service) Stop() (err error) {
 		for currency, initialBalanceCurrency := range svc.initialBalanceByPlatformByCurrency[platform.Name()] {
 			finalBalanceCurrency, ok := svc.balanceByPlatform[platformName].ValueByCurrency[currency]
 			if !ok {
-				return fmt.Errorf("cannot find balance for currency %s", currency)
+				logger.Errorf("cannot find balance for currency %s", currency)
 			}
 			oneDayProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 24*time.Hour)
 			oneMonthProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 30*24*time.Hour)
@@ -165,7 +165,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 		}
 
 		// update prices for all pairs and platforms
-		err = svc.updateIndexPrice(platform, tradeInfo.PairsToTrade)
+		err = svc.updateIndexPrice(platform, initialPairsToTradeByPlatform[platformName])
 		if err != nil {
 			return
 		}
