@@ -23,7 +23,8 @@ func (r *repo) StoreBalance(balanceModel *model.Balance) (err error) {
 		// if previous value is the same, don't do anything
 		var balanceRepo balance
 		err = r.db.
-			Take(&balanceRepo, "platform_name = ? AND currency = ? AND value = ?", balanceModel.PlatformName, currency, value).
+			Take(&balanceRepo, "execution_id = ? AND platform_name = ? AND currency = ? AND value = ?",
+				r.executionID, balanceModel.PlatformName, currency, value).
 			Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -43,6 +43,9 @@ func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 		}
 	}
 
+	// get previous order status
+	previousStatus := orderRepo.Status
+
 	// fill orderModel fields
 	orderRepo.PlatformOrderID = orderModel.ID
 	orderRepo.Pair = orderModel.Pair
@@ -62,14 +65,13 @@ func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 	// update order if exists, if not create it
 	if orderExists {
 		// update only if new status
-		err = r.db.
-			Take(&orderRepo, "platform_order_id = ?", orderModel.ID).
-			Error
-		err = r.db.
-			Save(&orderRepo).
-			Error
-		if err != nil {
-			return errors.WithStack(err)
+		if previousStatus != orderRepo.Status {
+			err = r.db.
+				Save(&orderRepo).
+				Error
+			if err != nil {
+				return errors.WithStack(err)
+			}
 		}
 	} else {
 		err = r.db.

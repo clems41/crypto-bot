@@ -2,6 +2,7 @@ package postgresqlRepository
 
 import (
 	"crypto-bot/internal/repository"
+	"crypto-bot/pkg/utils/envUtils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"time"
@@ -31,6 +32,16 @@ func New(DB *gorm.DB) (r *repo, err error) {
 	if err != nil {
 		return
 	}
+
+	// cleanup table if env variable is set
+	cleanup := envUtils.GetFromEnvOrDefault(envCleanupRepo, defaultCleanupRepo)
+	if cleanup == "true" {
+		err = r.cleanupTables()
+		if err != nil {
+			return
+		}
+	}
+
 	return
 }
 

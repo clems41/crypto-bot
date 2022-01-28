@@ -220,12 +220,17 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 							Date:               time.Now(),
 							Pair:               order.Pair,
 							Side:               closeOrderSide,
-							Volume:             order.Volume,
 							Type:               order.CloseConditionType,
 							Price:              order.CloseConditionPrice,
-							Amount:             order.Volume * order.Price,
 							PlatformName:       api.Name(),
 							CloseConditionType: tradingConst.NoneCloseConditionType,
+						}
+						if order.Side == tradingConst.BuySideOrder {
+							newOrder.Volume = order.Volume * (1 - takerFees/100)
+							newOrder.Amount *= newOrder.Price * newOrder.Volume
+						} else {
+							newOrder.Amount = order.Amount * (1 - takerFees/100)
+							newOrder.Volume *= newOrder.Amount / newOrder.Price
 						}
 						err = api.AddOrder(&newOrder)
 						if err != nil {
@@ -252,9 +257,11 @@ func (api *krakenApi) closeOrder(order *model.Order) (err error) {
 		return fmt.Errorf("cannot find currency got for pair %s ans side %s", order.Pair, order.Side)
 	}
 	if order.Side == tradingConst.BuySideOrder {
+		order.Volume *= 1 - takerFees/100
 		api.balanceByCurrencyMock[currencyNeeded] -= order.Amount
 		api.balanceByCurrencyMock[currencyGot] += order.Volume
 	} else {
+		order.Amount *= 1 - takerFees/100
 		api.balanceByCurrencyMock[currencyNeeded] -= order.Volume
 		api.balanceByCurrencyMock[currencyGot] += order.Amount
 	}
