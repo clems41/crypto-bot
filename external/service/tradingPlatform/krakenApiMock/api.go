@@ -216,13 +216,15 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 							closeOrderSide = tradingConst.BuySideOrder
 						}
 						newOrder := model.Order{
+							ID:                 uuid.New().String(),
 							Date:               time.Now(),
 							Pair:               order.Pair,
 							Side:               closeOrderSide,
 							Volume:             order.Volume,
-							Amount:             order.Volume * order.Price,
 							Type:               order.CloseConditionType,
 							Price:              order.CloseConditionPrice,
+							Amount:             order.Volume * order.Price,
+							PlatformName:       api.Name(),
 							CloseConditionType: tradingConst.NoneCloseConditionType,
 						}
 						err = api.AddOrder(&newOrder)

@@ -21,6 +21,7 @@ type Order struct {
 	CloseConditionPrice float64 `validate:"gte=0"`                                    // price that opposite order should get before executing order
 	Fees                float64 `validate:"gte=0"`                                    // fees taken by trading platform
 	Status              string  `validate:"oneof=open close cancel"`                  // order status
+	PlatformName        string  `validate:"required"`                                 // name of platform
 }
 
 func (order Order) Validate() (err error) {

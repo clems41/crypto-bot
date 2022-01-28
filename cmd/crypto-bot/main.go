@@ -30,18 +30,18 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	/* Algorithm */
-	algo, err := minOrMaxAlgo.New()
-	if err != nil {
-		logger.Fatal(err)
-	}
-
 	/* Repository */
 	/*	googleSheetRepo, err := googleSheetRepository.New(context.Background())
 		if err != nil {
 			logger.Fatal(err)
 		}*/
 	postgresqlRepo, err := postgresqlRepository.New(DB)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	/* Algorithm */
+	algo, err := minOrMaxAlgo.New()
 	if err != nil {
 		logger.Fatal(err)
 	}

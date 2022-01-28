@@ -312,6 +312,9 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 		return
 	}
 
+	// fill missing order fields
+	order.PlatformName = platform.Name()
+
 	// add order using platform
 	err = platform.AddOrder(order)
 	if err != nil {

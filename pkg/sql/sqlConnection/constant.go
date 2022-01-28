@@ -15,8 +15,8 @@ const (
 
 const (
 	defaultSqlDriver    = "postgresql"
-	defaultDebug        = "true"
-	defaultDetailedLogs = "true"
+	defaultDebug        = "false"
+	defaultDetailedLogs = "false"
 )
 
 // Default values with PostgreSQL as SqlDriver
