@@ -198,18 +198,29 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				continue
 			}
 
+			// find order history
+			orderForm := repository.GetOrderHistoryForm{
+				PlatformName: platformName,
+				Status:       tradingConst.OpenOrderStatus,
+			}
+			var openOrders []model.Order
+			openOrders, err = svc.repo.GetOrderHistory(orderForm)
+			if err != nil {
+				return
+			}
+
 			// fill open form to know if new order should be open
 			indexPrice, ok := svc.indexPriceByPlatformByPair[platformName][pair]
 			if !ok {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
 			openForm := tradingStrategy.ShouldAddOrderForm{
-				PriceHistory:       prices,
-				IndexPrice:         indexPrice,
-				PairToTrade:        pair,
-				CurrentBalance:     svc.balanceByPlatform[platformName].ValueByCurrency,
-				NbOpenOrdersByPair: tradeInfo.NbOpenOrderByPair,
-				AllPairsTraded:     initialPairsToTradeByPlatform[platformName],
+				PriceHistory:   prices,
+				IndexPrice:     indexPrice,
+				PairToTrade:    pair,
+				CurrentBalance: svc.balanceByPlatform[platformName].ValueByCurrency,
+				OpenOrders:     openOrders,
+				AllPairsTraded: initialPairsToTradeByPlatform[platformName],
 			}
 			var order model.Order
 			var shouldOpenOrder bool

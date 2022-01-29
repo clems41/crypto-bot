@@ -95,11 +95,6 @@ func (algo *algorithm) MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int) {
 }
 
 func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (amount float64, err error) {
-	// order should not be open if MaxOpenedOrdersByPair has been reached
-	if form.NbOpenOrdersByPair[form.PairToTrade] >= algo.MaxOpenedOrdersByPair() {
-		return
-	}
-
 	// find currency needed and related balance
 	currencyNeededToBuy, ok := tradingUtils.CurrencyNeededToTradePair(form.PairToTrade, tradingConst.BuySideOrder)
 	if !ok {
@@ -114,7 +109,7 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	// count all pair that are using this currency
-	var nbPairUsingCurrency, nbOpenOrderUsingCurency int
+	var nbPairUsingCurrency int
 	for _, pair := range form.AllPairsTraded {
 		var currency string
 		currency, ok = tradingUtils.CurrencyNeededToTradePair(pair, tradingConst.BuySideOrder)
@@ -123,15 +118,35 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 		}
 		if currency == currencyNeededToBuy {
 			nbPairUsingCurrency++
-			nbOpenOrderUsingCurency += form.NbOpenOrdersByPair[pair]
 		}
 	}
 
 	// define share (number of part to divide balance)
 	share := nbPairUsingCurrency * algo.MaxOpenedOrdersByPair()
 
-	if share != nbOpenOrderUsingCurency {
-		amount = balance / float64(share-nbOpenOrderUsingCurency)
+	// count number of current open orders that already used currency balance
+	var nbOpenOrderForPair, nbOpenOrderThatAlreadyUsedCurrency int
+	for _, order := range form.OpenOrders {
+		if order.Pair == form.PairToTrade && order.Status == tradingConst.OpenOrderStatus {
+			nbOpenOrderForPair++
+		}
+		var currency string
+		currency, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, tradingConst.BuySideOrder)
+		if !ok {
+			return amount, fmt.Errorf("cannot find currency to buy %s", form.PairToTrade)
+		}
+		if currency == currencyNeededToBuy && order.Side == tradingConst.SellSideOrder {
+			nbOpenOrderThatAlreadyUsedCurrency++
+		}
+	}
+
+	// order should not be open if MaxOpenedOrdersByPair has been reached
+	if nbOpenOrderForPair >= algo.MaxOpenedOrdersByPair() {
+		return
+	}
+
+	if share != nbOpenOrderThatAlreadyUsedCurrency {
+		amount = balance / float64(share-nbOpenOrderThatAlreadyUsedCurrency)
 	}
 
 	return

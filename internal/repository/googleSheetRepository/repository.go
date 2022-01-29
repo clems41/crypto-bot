@@ -149,3 +149,8 @@ func (r *repo) GetPriceHistory(form repository.GetPriceHistoryForm) (prices []mo
 	}
 	return
 }
+
+func (r *repo) GetOrderHistory(form repository.GetOrderHistoryForm) (orders []model.Order, err error) {
+	// TODO
+	return
+}

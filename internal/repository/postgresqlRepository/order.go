@@ -2,6 +2,7 @@ package postgresqlRepository
 
 import (
 	"crypto-bot/internal/model"
+	"crypto-bot/internal/repository"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
@@ -80,6 +81,47 @@ func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 		if err != nil {
 			return errors.WithStack(err)
 		}
+	}
+
+	return
+}
+
+func (r *repo) GetOrderHistory(form repository.GetOrderHistoryForm) (orders []model.Order, err error) {
+	var ordersRepo []order
+	query := r.db.Where("execution_id = ?", r.executionID)
+	if form.Status != "" {
+		query = query.Where("status = ?", form.Status)
+	}
+	if form.Pair != "" {
+		query = query.Where("pair = ?", form.Pair)
+	}
+	if form.PlatformName != "" {
+		query = query.Where("platform_name = ?", form.PlatformName)
+	}
+	err = query.
+		Find(&ordersRepo).
+		Error
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	for _, orderRepo := range ordersRepo {
+		orders = append(orders, model.Order{
+			ID:                  orderRepo.PlatformOrderID,
+			Date:                orderRepo.CreatedAt,
+			Pair:                orderRepo.Pair,
+			Side:                orderRepo.Side,
+			Volume:              orderRepo.Volume,
+			Type:                orderRepo.Type,
+			Price:               orderRepo.Price,
+			Amount:              orderRepo.Amount,
+			Leverage:            orderRepo.Leverage,
+			CloseConditionType:  orderRepo.CloseConditionType,
+			CloseConditionPrice: orderRepo.CloseConditionPrice,
+			Fees:                orderRepo.Fees,
+			Status:              orderRepo.Status,
+			PlatformName:        orderRepo.PlatformName,
+		})
 	}
 
 	return

@@ -15,4 +15,5 @@ type Repository interface {
 	/* order */
 
 	StoreOrder(order *model.Order) (err error)
+	GetOrderHistory(form GetOrderHistoryForm) (orders []model.Order, err error)
 }
