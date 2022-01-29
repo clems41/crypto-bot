@@ -33,7 +33,7 @@ func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 	var orderRepo order
 	orderExists := true
 	err = r.db.
-		Take(&orderRepo, "platform_order_id = ?", orderModel.ID).
+		Take(&orderRepo, "execution_id = ? AND platform_order_id = ?", r.executionID, orderModel.ID).
 		Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
