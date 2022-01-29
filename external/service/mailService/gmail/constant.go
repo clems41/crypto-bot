@@ -2,7 +2,7 @@ package gmail
 
 const (
 	envSmtpUser     = "SMTP_USER"
-	envSmtpPassword = "SMTP_PASWORD"
+	envSmtpPassword = "SMTP_PASSWORD"
 )
 
 const (

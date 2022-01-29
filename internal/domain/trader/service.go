@@ -265,6 +265,7 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 				return
 			}
 		}
+		svc.previousOrdersByPlatformById[platform.Name()][order.ID] = order
 	}
 	return
 }
