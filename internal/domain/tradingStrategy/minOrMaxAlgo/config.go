@@ -1,6 +1,7 @@
 package minOrMaxAlgo
 
 import (
+	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"strconv"
 )
@@ -68,5 +69,6 @@ func GetConfigFromEnvOrDefault() (config *Config, err error) {
 		MaxOpenedOrdersByPair:                 maxOpenedOrdersByPair,
 		MinimumAmount:                         minimumAmount,
 	}
+	logger.Infof("Following config will be used for trading algo : %+v", config)
 	return
 }

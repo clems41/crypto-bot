@@ -2,6 +2,7 @@ package postgresqlRepository
 
 import (
 	"crypto-bot/internal/repository"
+	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -41,6 +42,8 @@ func New(DB *gorm.DB) (r *repo, err error) {
 			return
 		}
 	}
+
+	logger.Infof("Execution ID %s", r.executionID)
 
 	return
 }
