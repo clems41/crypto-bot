@@ -2,6 +2,7 @@ package gmail
 
 import (
 	"crypto-bot/external/service/mailService"
+	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"fmt"
 	"net/smtp"
@@ -12,6 +13,7 @@ var _ mailService.Service = (*service)(nil)
 type service struct {
 	smtpUser     string
 	smtpPassword string
+	sendMail     bool
 }
 
 func NewService() (svc *service, err error) {
@@ -23,16 +25,22 @@ func NewService() (svc *service, err error) {
 	if err != nil {
 		return
 	}
+	sendMailStr := envUtils.GetFromEnvOrDefault(envSendMail, defaultSendMail)
 
 	svc = &service{
 		smtpUser:     smtpUser,
 		smtpPassword: smtpPassword,
+		sendMail:     sendMailStr == "true",
 	}
 
 	return
 }
 
 func (svc *service) Send(request mailService.SendRequest) (response mailService.SendResponse, err error) {
+	if svc.sendMail {
+		logger.Debugf("SEND_MAIL variable has been set to false, mail will not be sent.")
+		return
+	}
 	// Authentication.
 	auth := smtp.PlainAuth("", svc.smtpUser, svc.smtpPassword, smtpServer)
 	message := fmt.Sprintf("From: <%s>\r\nTo: <%s>\r\nSubject: %s\r\n\r\n%s",

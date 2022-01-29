@@ -3,6 +3,11 @@ package gmail
 const (
 	envSmtpUser     = "SMTP_USER"
 	envSmtpPassword = "SMTP_PASSWORD"
+	envSendMail     = "SEND_MAIL"
+)
+
+const (
+	defaultSendMail = "true"
 )
 
 const (
