@@ -1,5 +1,6 @@
 package trader
 
 type TradeInfo struct {
-	PairsToTrade []string
+	PairsToTrade      []string
+	NbOpenOrderByPair map[string]int
 }

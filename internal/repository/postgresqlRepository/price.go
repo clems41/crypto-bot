@@ -61,13 +61,3 @@ func (r *repo) GetPriceHistory(form repository.GetPriceHistoryForm) (prices []mo
 	}
 	return
 }
-
-func (r *repo) cleanupTables() (err error) {
-	err = r.db.
-		Exec("DELETE FROM prices").
-		Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return
-}

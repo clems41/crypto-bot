@@ -48,7 +48,7 @@ func main() {
 	}
 
 	/* Algorithm */
-	algo, err := minOrMaxAlgo.New()
+	algo, err := minOrMaxAlgo.New(nil) // don't use custom config but environment variables
 	if err != nil {
 		logger.Fatal(err)
 	}

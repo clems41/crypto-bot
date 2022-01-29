@@ -14,10 +14,16 @@ type algorithm struct {
 	config *Config
 }
 
-func New() (algo *algorithm, err error) {
-	config, err := GetConfigFromEnvOrDefault()
-	if err != nil {
-		return
+// New instantiate new algorithm service. You can specify config parameters using config argument or environment variables.
+func New(customConfig *Config) (algo *algorithm, err error) {
+	var config *Config
+	if customConfig != nil {
+		config = customConfig
+	} else {
+		config, err = GetConfigFromEnvOrDefault()
+		if err != nil {
+			return
+		}
 	}
 
 	algo = &algorithm{
@@ -90,7 +96,7 @@ func (algo *algorithm) MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int) {
 
 func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (amount float64, err error) {
 	// order should not be open if MaxOpenedOrdersByPair has been reached
-	if len(form.OpenedOrdersByPair[form.PairToTrade]) >= algo.MaxOpenedOrdersByPair() {
+	if form.NbOpenOrdersByPair[form.PairToTrade] >= algo.MaxOpenedOrdersByPair() {
 		return
 	}
 
@@ -108,7 +114,7 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	// count all pair that are using this currency
-	var nbPairUsingCurrency int
+	var nbPairUsingCurrency, nbOpenOrderUsingCurency int
 	for _, pair := range form.AllPairsTraded {
 		var currency string
 		currency, ok = tradingUtils.CurrencyNeededToTradePair(pair, tradingConst.BuySideOrder)
@@ -117,30 +123,16 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 		}
 		if currency == currencyNeededToBuy {
 			nbPairUsingCurrency++
+			nbOpenOrderUsingCurency += form.NbOpenOrdersByPair[pair]
 		}
 	}
 
 	// define share (number of part to divide balance)
 	share := nbPairUsingCurrency * algo.MaxOpenedOrdersByPair()
 
-	// find opened order using this currency
-	var nbOpenedOrders int
-	for pair, orders := range form.OpenedOrdersByPair {
-		var currency string
-		currency, ok = tradingUtils.CurrencyNeededToTradePair(pair, tradingConst.BuySideOrder)
-		if !ok {
-			return amount, fmt.Errorf("cannot find currency to buy %s", form.PairToTrade)
-		}
-		if currency == currencyNeededToBuy {
-			nbOpenedOrders += len(orders)
-		}
+	if share != nbOpenOrderUsingCurency {
+		amount = balance / float64(share-nbOpenOrderUsingCurency)
 	}
-
-	if nbOpenedOrders == share {
-		return
-	}
-
-	amount = balance / float64(share-nbOpenedOrders)
 
 	return
 }

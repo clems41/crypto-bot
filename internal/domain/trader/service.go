@@ -192,7 +192,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 			// If price history doesn't return enough prices, svc.algo.ShouldAddOrder will return an error.
 			// So we skip this run, and try again the next one.
-			// It can take some time to get enough prices at start, depending on svc.config.IntervalToComparePricesInMinutes.
+			// It can take some time to get enough prices at start, depending on delayBetweenEachRun.
 			if len(prices) < svc.algo.PricesNeeded() {
 				logger.Debugf("Run for pair %s will be skip, doesn't get enough prices from history to know if order should be open", pair)
 				continue
@@ -208,7 +208,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				IndexPrice:         indexPrice,
 				PairToTrade:        pair,
 				CurrentBalance:     svc.balanceByPlatform[platformName].ValueByCurrency,
-				OpenedOrdersByPair: svc.openedOrdersByPlatformByPair[platformName],
+				NbOpenOrdersByPair: tradeInfo.NbOpenOrderByPair,
 				AllPairsTraded:     initialPairsToTradeByPlatform[platformName],
 			}
 			var order model.Order
@@ -223,6 +223,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				if err != nil {
 					return
 				}
+				break // open order only once at run, avoid updating tradeInfo after each new order
 			}
 		}
 	}
@@ -271,6 +272,7 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 }
 
 func (svc *service) getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, err error) {
+	info.NbOpenOrderByPair = make(map[string]int)
 	// count number of opened orders by pair
 	openedOrdersByPlatform, ok := svc.openedOrdersByPlatformByPair[platform.Name()]
 	if !ok {
@@ -281,6 +283,11 @@ func (svc *service) getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, 
 	for _, pair := range initialPairsToTradeByPlatform[platform.Name()] {
 		if len(openedOrdersByPlatform[pair]) < svc.algo.MaxOpenedOrdersByPair() {
 			info.PairsToTrade = append(info.PairsToTrade, pair)
+		}
+		for _, order := range openedOrdersByPlatform[pair] {
+			if order.Status == tradingConst.OpenOrderStatus {
+				info.NbOpenOrderByPair[pair]++
+			}
 		}
 	}
 

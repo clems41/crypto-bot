@@ -5,6 +5,7 @@ import (
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"time"
 )
@@ -52,6 +53,28 @@ func (r *repo) Migrate() (err error) {
 	err = r.db.AutoMigrate(&price{}, &balance{}, &order{})
 	if err != nil {
 		return
+	}
+	return
+}
+
+func (r *repo) cleanupTables() (err error) {
+	err = r.db.
+		Exec("DELETE FROM prices").
+		Error
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = r.db.
+		Exec("DELETE FROM balances").
+		Error
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = r.db.
+		Exec("DELETE FROM orders").
+		Error
+	if err != nil {
+		return errors.WithStack(err)
 	}
 	return
 }

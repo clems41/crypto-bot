@@ -9,6 +9,6 @@ type ShouldAddOrderForm struct {
 	IndexPrice         model.Price
 	PairToTrade        string
 	CurrentBalance     map[string]float64
-	OpenedOrdersByPair map[string][]model.Order
+	NbOpenOrdersByPair map[string]int
 	AllPairsTraded     []string
 }
