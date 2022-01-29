@@ -38,3 +38,4 @@ coverage-report.html
 # credential files
 google_credentials.json
 kraken_credentials.json
+smtp_credentials.json
