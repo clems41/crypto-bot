@@ -32,7 +32,7 @@ func main() {
 	}
 
 	/* Trading platforms */
-	krakenApi, err := krakenApiMock.New(gmailService)
+	krakenApi, err := krakenApiMock.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -59,7 +59,8 @@ func main() {
 			krakenApi,
 		},
 		postgresqlRepo,
-		algo)
+		algo,
+		gmailService)
 	if err != nil {
 		logger.Fatal(err)
 	}
