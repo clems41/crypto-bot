@@ -103,6 +103,9 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	if !ok {
 		return amount, fmt.Errorf("cannot find balance for currency %s", currencyNeededToBuy)
 	}
+	if balance <= 0 {
+		return
+	}
 
 	// count all pair that are using this currency
 	var nbPairUsingCurrency int
