@@ -226,11 +226,11 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 							CloseConditionType: tradingConst.NoneCloseConditionType,
 						}
 						if order.Side == tradingConst.BuySideOrder {
-							newOrder.Volume = order.Volume * (1 - takerFees/100)
-							newOrder.Amount *= newOrder.Price * newOrder.Volume
+							newOrder.Volume = order.Volume
+							newOrder.Amount = newOrder.Price * newOrder.Volume
 						} else {
-							newOrder.Amount = order.Amount * (1 - takerFees/100)
-							newOrder.Volume *= newOrder.Amount / newOrder.Price
+							newOrder.Amount = order.Amount
+							newOrder.Volume = newOrder.Amount / newOrder.Price
 						}
 						err = api.AddOrder(&newOrder)
 						if err != nil {

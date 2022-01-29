@@ -225,9 +225,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
-	if svc.openedOrdersByPlatformByPair[platform.Name()] == nil {
-		svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
-	}
+	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
 	orders, err := platform.GetAllOrders()
 	if err != nil {
 		return
@@ -276,12 +274,6 @@ func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
 	err = svc.repo.StoreBalance(&balance)
 	if err != nil {
 		return
-	}
-
-	// init balance if not already done
-	if svc.initialBalanceByPlatformByCurrency[platform.Name()] == nil {
-		svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
-		svc.initialBalanceByPlatformByCurrency[platform.Name()] = svc.balanceByPlatform[platform.Name()].ValueByCurrency
 	}
 	logger.Info(svc.balanceByPlatform[platform.Name()])
 	return
