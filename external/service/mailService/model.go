@@ -2,7 +2,8 @@ package mailService
 
 type SendRequest struct {
 	From    string
-	Message string
+	Subject string
+	Body    string
 }
 
 type SendResponse struct {

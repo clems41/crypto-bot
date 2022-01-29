@@ -10,7 +10,6 @@ import (
 	"crypto-bot/internal/repository"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/tradingUtils"
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -256,14 +255,10 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 		previousOrder, ok := svc.previousOrdersByPlatformById[platform.Name()][order.ID]
 		if !ok || previousOrder.Status != order.Status {
 			// if new order or status has been updated, send email with order info
-			var data []byte
-			data, err = json.Marshal(order)
-			if err != nil {
-				return
-			}
 			sendRequest := mailService.SendRequest{
 				From:    platform.Name(),
-				Message: string(data),
+				Subject: fmt.Sprintf("New order from %s", platform.Name()),
+				Body:    order.String(),
 			}
 			_, err = svc.mailService.Send(sendRequest)
 			if err != nil {

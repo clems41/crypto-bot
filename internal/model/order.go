@@ -34,7 +34,7 @@ func (order Order) Validate() (err error) {
 }
 
 func (order Order) String() (str string) {
-	return fmt.Sprintf("Send order to %s %s at %s with volume=%f, price=%f, amount=%f, status=%s, fees=%f",
-		order.Side, order.Pair, order.Date.Format(timeConst.DefaultFormatTimeLayout), order.Volume, order.Price, order.Amount, order.Status,
-		order.Fees)
+	return fmt.Sprintf("{ %s : %s %s at %s with volume=%f, price=%f, amount=%f, status=%s, fees=%f, closeType=%s, closePrice=%f}",
+		order.PlatformName, order.Side, order.Pair, order.Date.Format(timeConst.DefaultFormatTimeLayout), order.Volume,
+		order.Price, order.Amount, order.Status, order.Fees, order.CloseConditionType, order.CloseConditionPrice)
 }

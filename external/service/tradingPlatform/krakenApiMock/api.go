@@ -81,6 +81,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	order.ID = uuid.New().String()
 	order.Fees = fees
 	order.Status = tradingConst.OpenOrderStatus
+	order.Date = time.Now()
 
 	// add orders in memory
 	api.orders = append(api.orders, order)

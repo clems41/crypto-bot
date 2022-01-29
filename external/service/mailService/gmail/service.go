@@ -3,6 +3,7 @@ package gmail
 import (
 	"crypto-bot/external/service/mailService"
 	"crypto-bot/pkg/utils/envUtils"
+	"fmt"
 	"net/smtp"
 )
 
@@ -34,9 +35,11 @@ func NewService() (svc *service, err error) {
 func (svc *service) Send(request mailService.SendRequest) (response mailService.SendResponse, err error) {
 	// Authentication.
 	auth := smtp.PlainAuth("", svc.smtpUser, svc.smtpPassword, smtpServer)
+	message := fmt.Sprintf("From: <%s>\r\nTo: <%s>\r\nSubject: %s\r\n\r\n%s",
+		request.From, svc.smtpUser, request.Subject, request.Body)
 
 	// Sending email.
-	err = smtp.SendMail(smtpServer+":"+smtpPortTls, auth, request.From, []string{svc.smtpUser}, []byte(request.Message))
+	err = smtp.SendMail(smtpServer+":"+smtpPortTls, auth, request.From, []string{svc.smtpUser}, []byte(message))
 	if err != nil {
 		return
 	}
