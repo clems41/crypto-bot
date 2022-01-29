@@ -1,7 +1,6 @@
 package krakenApiMock
 
 import (
-	"crypto-bot/external/service/mailService"
 	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
@@ -22,10 +21,9 @@ type krakenApi struct {
 	client                *krakenClient.KrakenAPI
 	balanceByCurrencyMock map[string]float64
 	orders                []*model.Order
-	mailService           mailService.Service
 }
 
-func New(mailService mailService.Service) (api *krakenApi, err error) {
+func New() (api *krakenApi, err error) {
 	apiKey, err := envUtils.GetFromEnvOrError(envKrakenApiKey)
 	if err != nil {
 		return nil, err
@@ -39,7 +37,6 @@ func New(mailService mailService.Service) (api *krakenApi, err error) {
 	return &krakenApi{
 		client:                client,
 		balanceByCurrencyMock: initialBalance,
-		mailService:           mailService,
 	}, nil
 }
 
@@ -78,14 +75,6 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 		return
 	}
 	logger.Infof("Order sent to kraken api : %+v", response.Description)
-	request := mailService.SendRequest{
-		From:    api.Name(),
-		Message: fmt.Sprintf("%+v", order),
-	}
-	_, err = api.mailService.Send(request)
-	if err != nil {
-		return
-	}
 
 	// fill order as mock
 	fees := order.Amount * takerFees / 100

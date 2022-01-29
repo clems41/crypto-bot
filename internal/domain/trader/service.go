@@ -1,14 +1,16 @@
 package trader
 
 import (
+	"crypto-bot/external/service/mailService"
 	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/internal/constant/timeConst"
 	"crypto-bot/internal/constant/tradingConst"
-	tradingStrategy2 "crypto-bot/internal/domain/tradingStrategy"
+	"crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/tradingUtils"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -32,15 +34,18 @@ type service struct {
 	quitChannel                        chan bool                           // quit goroutine when program exit
 	platformApis                       map[string]tradingPlatform.Api      // communicate with trading platforms
 	repo                               repository.Repository               // use to store data
-	algo                               tradingStrategy2.Algo               // use to know if order should be open based on prices
+	algo                               tradingStrategy.Algo                // use to know if order should be open based on prices
 	startTime                          time.Time                           // datetime when lago has been started
+	mailService                        mailService.Service                 // use to send order by mail
 	initialBalanceByPlatformByCurrency map[string]map[string]float64       // initial balance before opening first order by platform and by currency
 	balanceByPlatform                  map[string]model.Balance            // current balance
 	indexPriceByPlatformByPair         map[string]map[string]model.Price   // store last index got from platform
 	openedOrdersByPlatformByPair       map[string]map[string][]model.Order // store opened orders calculating amount to invest by pair
+	previousOrdersByPlatformById       map[string]map[string]model.Order   // store orders
 }
 
-func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy2.Algo) (Service, error) {
+func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo,
+	mailService mailService.Service) (Service, error) {
 	platformApisMap := make(map[string]tradingPlatform.Api)
 	for _, platformApi := range platformApis {
 		platformApisMap[platformApi.Name()] = platformApi
@@ -50,10 +55,12 @@ func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, 
 		platformApis:                       platformApisMap,
 		repo:                               repo,
 		algo:                               algo,
+		mailService:                        mailService,
 		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
 		balanceByPlatform:                  make(map[string]model.Balance),
 		indexPriceByPlatformByPair:         make(map[string]map[string]model.Price),
 		openedOrdersByPlatformByPair:       make(map[string]map[string][]model.Order),
+		previousOrdersByPlatformById:       make(map[string]map[string]model.Order),
 	}, nil
 }
 
@@ -197,7 +204,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			if !ok {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
-			openForm := tradingStrategy2.ShouldAddOrderForm{
+			openForm := tradingStrategy.ShouldAddOrderForm{
 				PriceHistory:       prices,
 				IndexPrice:         indexPrice,
 				PairToTrade:        pair,
@@ -224,6 +231,10 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
+	if svc.previousOrdersByPlatformById[platform.Name()] == nil {
+		svc.previousOrdersByPlatformById[platform.Name()] = make(map[string]model.Order)
+	}
+
 	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
 	orders, err := platform.GetAllOrders()
 	if err != nil {
@@ -234,9 +245,30 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 		if err != nil {
 			return
 		}
+
+		// fill open orders map
 		if order.Status == tradingConst.OpenOrderStatus {
 			svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair] = append(
 				svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair], order)
+		}
+
+		// send new order by mail
+		previousOrder, ok := svc.previousOrdersByPlatformById[platform.Name()][order.ID]
+		if !ok || previousOrder.Status != order.Status {
+			// if new order or status has been updated, send email with order info
+			var data []byte
+			data, err = json.Marshal(order)
+			if err != nil {
+				return
+			}
+			sendRequest := mailService.SendRequest{
+				From:    platform.Name(),
+				Message: string(data),
+			}
+			_, err = svc.mailService.Send(sendRequest)
+			if err != nil {
+				return
+			}
 		}
 	}
 	return
