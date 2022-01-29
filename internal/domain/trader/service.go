@@ -251,9 +251,9 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 				svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair], order)
 		}
 
-		// send new order by mail
+		// send order by mail if it has just been closed
 		previousOrder, ok := svc.previousOrdersByPlatformById[platform.Name()][order.ID]
-		if !ok || previousOrder.Status != order.Status {
+		if ok && previousOrder.Status != order.Status && order.Status == tradingConst.CloseOrderStatus {
 			// if new order or status has been updated, send email with order info
 			sendRequest := mailService.SendRequest{
 				From:    platform.Name(),
