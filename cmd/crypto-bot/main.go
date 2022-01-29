@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto-bot/external/service/mailService/gmail"
 	"crypto-bot/external/service/tradingPlatform"
 	"crypto-bot/external/service/tradingPlatform/krakenApiMock"
 	"crypto-bot/internal/domain/trader"
@@ -24,8 +25,14 @@ func main() {
 		logger.Fatal(err)
 	}
 
+	/* Mail service */
+	gmailService, err := gmail.NewService()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	/* Trading platforms */
-	krakenApi, err := krakenApiMock.New()
+	krakenApi, err := krakenApiMock.New(gmailService)
 	if err != nil {
 		logger.Fatal(err)
 	}

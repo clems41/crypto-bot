@@ -93,7 +93,6 @@ func (svc *service) Start() (err error) {
 		default:
 			err = svc.applyTradingAlgorithm()
 			if err != nil {
-				logger.Error(err)
 				return
 			}
 		}
