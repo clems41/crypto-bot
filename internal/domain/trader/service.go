@@ -156,13 +156,6 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			return
 		}
 
-		// get trade info (pairs, amount, etc...)
-		var tradeInfo TradeInfo
-		tradeInfo, err = svc.getTradeInfo(platform)
-		if err != nil {
-			return
-		}
-
 		// update prices for all pairs and platforms
 		err = svc.updateIndexPrice(platform, initialPairsToTradeByPlatform[platformName])
 		if err != nil {
@@ -171,6 +164,13 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 		// update open orders form platform
 		err = svc.updateOpenedOrders(platform)
+		if err != nil {
+			return
+		}
+
+		// get trade info (pairs, amount, etc...)
+		var tradeInfo TradeInfo
+		tradeInfo, err = svc.getTradeInfo(platform)
 		if err != nil {
 			return
 		}
@@ -241,6 +241,9 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
+	// reset opened orders
+	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
+
 	orders, err := platform.GetAllOrders()
 	if err != nil {
 		return
