@@ -37,7 +37,7 @@ func NewService() (svc *service, err error) {
 }
 
 func (svc *service) Send(request mailService.SendRequest) (response mailService.SendResponse, err error) {
-	if svc.sendMail {
+	if !svc.sendMail {
 		logger.Debugf("SEND_MAIL variable has been set to false, mail will not be sent.")
 		return
 	}

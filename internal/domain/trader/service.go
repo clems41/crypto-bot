@@ -68,25 +68,24 @@ func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, 
 func (svc *service) Start() (err error) {
 	svc.startTime = time.Now()
 
-	// init balance
-	for platformName, _ := range svc.platformApis {
+	// init all maps
+	for platformName, platform := range svc.platformApis {
 		svc.balanceByPlatform[platformName] = model.Balance{
 			PlatformName:    platformName,
 			ValueByCurrency: make(map[string]float64),
 		}
-	}
+		svc.previousOrdersByPlatformById[platformName] = make(map[string]model.Order)
+		svc.openedOrdersByPlatformByPair[platformName] = make(map[string][]model.Order)
+		svc.initialBalanceByPlatformByCurrency[platformName] = make(map[string]float64)
+		svc.indexPriceByPlatformByPair[platformName] = make(map[string]model.Price)
 
-	// Set initial balance, useful to calculate ending profit, result, etc...
-	for platformName, platform := range svc.platformApis {
+		// Set initial balance, useful to calculate ending profit, result, etc...
 		err = svc.updateBalance(platform)
 		if err != nil {
 			return
 		}
 		for currency, value := range svc.balanceByPlatform[platformName].ValueByCurrency {
-			if svc.initialBalanceByPlatformByCurrency[platform.Name()] == nil {
-				svc.initialBalanceByPlatformByCurrency[platform.Name()] = make(map[string]float64)
-			}
-			svc.initialBalanceByPlatformByCurrency[platform.Name()][currency] = value
+			svc.initialBalanceByPlatformByCurrency[platformName][currency] = value
 		}
 	}
 
@@ -157,12 +156,6 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			return
 		}
 
-		// update open orders form platform
-		err = svc.updateOpenedOrders(platform)
-		if err != nil {
-			return
-		}
-
 		// get trade info (pairs, amount, etc...)
 		var tradeInfo TradeInfo
 		tradeInfo, err = svc.getTradeInfo(platform)
@@ -172,6 +165,12 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 		// update prices for all pairs and platforms
 		err = svc.updateIndexPrice(platform, initialPairsToTradeByPlatform[platformName])
+		if err != nil {
+			return
+		}
+
+		// update open orders form platform
+		err = svc.updateOpenedOrders(platform)
 		if err != nil {
 			return
 		}
@@ -242,11 +241,6 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 }
 
 func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
-	if svc.previousOrdersByPlatformById[platform.Name()] == nil {
-		svc.previousOrdersByPlatformById[platform.Name()] = make(map[string]model.Order)
-	}
-
-	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
 	orders, err := platform.GetAllOrders()
 	if err != nil {
 		return
@@ -333,9 +327,6 @@ func (svc *service) updateIndexPrice(platform tradingPlatform.Api, pairs []strin
 		err = svc.repo.StorePrice(&price)
 		if err != nil {
 			return
-		}
-		if svc.indexPriceByPlatformByPair[platform.Name()] == nil {
-			svc.indexPriceByPlatformByPair[platform.Name()] = make(map[string]model.Price)
 		}
 		svc.indexPriceByPlatformByPair[platform.Name()][price.Pair] = price
 		logger.Info(price)
