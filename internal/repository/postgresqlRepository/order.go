@@ -27,7 +27,7 @@ type order struct {
 func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 	err = orderModel.Validate()
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 
 	// find if order already exist

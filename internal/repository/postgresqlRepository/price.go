@@ -17,7 +17,7 @@ type price struct {
 func (r *repo) StorePrice(priceModel *model.Price) (err error) {
 	err = priceModel.Validate()
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 
 	priceRepo := price{

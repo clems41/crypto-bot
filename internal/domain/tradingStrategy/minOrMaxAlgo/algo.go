@@ -6,6 +6,7 @@ import (
 	"crypto-bot/internal/model"
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
+	"github.com/pkg/errors"
 )
 
 var _ tradingStrategy.Algo = (*algorithm)(nil)
@@ -36,25 +37,31 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 	if len(form.PriceHistory) < algo.PricesNeeded() {
 		err = fmt.Errorf("not enough prices to take a decision, got %d but need %d",
 			len(form.PriceHistory), algo.PricesNeeded())
+		return
 	}
 
 	// do calculation only on last NumberOfPreviousPricesToCompare prices
 	pricesHistory := form.PriceHistory[len(form.PriceHistory)-algo.config.NumberOfPreviousPricesToCompare:]
 
-	// find min from price history
+	// find min and max from price history
 	minimumAsk := pricesHistory[0].Ask
+	maximumAsk := pricesHistory[0].Ask
 	for _, price := range pricesHistory {
 		if price.Ask < minimumAsk {
 			minimumAsk = price.Ask
 		}
+		if price.Ask > maximumAsk {
+			maximumAsk = price.Ask
+		}
 	}
 
 	// fill order if conditions are ok
-	if form.IndexPrice.Ask <= minimumAsk {
+	//if form.IndexPrice.Ask <= minimumAsk {
+	if form.IndexPrice.Ask >= maximumAsk {
 		var amount float64
 		amount, err = algo.getAmountToBuy(form)
 		if err != nil {
-			return
+			return false, order, errors.WithStack(err)
 		}
 		if amount < algo.config.MinimumAmount {
 			return
@@ -62,13 +69,13 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 		price := form.IndexPrice.Ask * (1 - algo.config.PercentPriceBelowToBuy/100)
 		price, err = tradingUtils.RemovePriceDecimal(price, form.PairToTrade)
 		if err != nil {
-			return
+			return false, order, errors.WithStack(err)
 		}
 		volume := amount / price
 		closeConditionPrice := price * (1 + algo.config.MinimumResultInPercentToClosePosition/100)
 		closeConditionPrice, err = tradingUtils.RemovePriceDecimal(closeConditionPrice, form.PairToTrade)
 		if err != nil {
-			return
+			return false, order, errors.WithStack(err)
 		}
 		order = model.Order{
 			Pair:                form.PairToTrade,

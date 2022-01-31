@@ -16,7 +16,7 @@ type balance struct {
 func (r *repo) StoreBalance(balanceModel *model.Balance) (err error) {
 	err = balanceModel.Validate()
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 
 	for currency, value := range balanceModel.ValueByCurrency {

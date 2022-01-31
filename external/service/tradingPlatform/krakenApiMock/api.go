@@ -10,6 +10,7 @@ import (
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
 	"time"
@@ -48,7 +49,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	// Send request to kraken but with validate=true (order will not be sent, but fields will be validated)
 	pair, err := GetKrakenPair(order.Pair)
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 	side, ok := sideConverter[order.Side]
 	if !ok {
@@ -72,7 +73,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	}
 	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 	logger.Infof("Order sent to kraken api : %+v", response.Description)
 
@@ -98,13 +99,13 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 		var krakenPair string
 		krakenPair, err = GetKrakenPair(pair)
 		if err != nil {
-			return
+			return nil, errors.WithStack(err)
 		}
 		krakenPairs = append(krakenPairs, krakenPair)
 	}
 	response, err := api.client.Ticker(krakenPairs...)
 	if err != nil {
-		return
+		return nil, errors.WithStack(err)
 	}
 
 	// search required value from response
@@ -117,16 +118,16 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 			var pair string
 			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
 			if err != nil {
-				return
+				return nil, errors.WithStack(err)
 			}
 			var askPrice, bidPrice float64
 			askPrice, err = strconv.ParseFloat(pairTickerInfo.Ask[0], 64)
 			if err != nil {
-				return
+				return nil, errors.WithStack(err)
 			}
 			bidPrice, err = strconv.ParseFloat(pairTickerInfo.Bid[0], 64)
 			if err != nil {
-				return
+				return nil, errors.WithStack(err)
 			}
 			prices = append(prices, model.Price{
 				Date:         time.Now(),
@@ -140,7 +141,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 
 	err = api.updateOrdersBasedOnPrice(prices)
 	if err != nil {
-		return
+		return nil, errors.WithStack(err)
 	}
 
 	return
@@ -202,7 +203,7 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 			if shouldClose {
 				err = api.closeOrder(order)
 				if err != nil {
-					return
+					return errors.WithStack(err)
 				}
 				api.orders[orderIdx] = order
 

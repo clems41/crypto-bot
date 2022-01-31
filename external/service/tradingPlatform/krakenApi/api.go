@@ -7,6 +7,7 @@ import (
 	"crypto-bot/pkg/utils/envUtils"
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"
+	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
 	"time"
@@ -42,7 +43,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	// Send request to kraken but with validate=true (order will not be sent, but fields will be validated)
 	pair, err := GetKrakenPair(order.Pair)
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 	side, ok := sideConverter[order.Side]
 	if !ok {
@@ -52,17 +53,24 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	if !ok {
 		return fmt.Errorf("cannot find order type for %s", order.Type)
 	}
-	closeOrderType, ok := typeConverter[order.Type]
+	closeOrderType, ok := typeConverter[order.CloseConditionType]
 	if !ok {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
 	}
-	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), map[string]string{
-		priceParameter:          fmt.Sprintf("%f", order.Price),
-		closeOrderTypeParameter: closeOrderType,
-		closePriceParameter:     fmt.Sprintf("%f", order.CloseConditionPrice),
-	})
+	orderParameters := map[string]string{
+		priceParameter:    fmt.Sprintf("%f", order.Price),
+		validateParameter: "true",
+	}
+	if closeOrderType != "" {
+		orderParameters[closeOrderTypeParameter] = closeOrderType
+		orderParameters[closePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
+	}
+	if !ok {
+		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
+	}
+	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 
 	// fill order as mock
@@ -88,7 +96,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 	}
 	response, err := api.client.Ticker(krakenPairs...)
 	if err != nil {
-		return
+		return nil, errors.WithStack(err)
 	}
 
 	// search required value from response
@@ -101,16 +109,16 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 			var pair string
 			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
 			if err != nil {
-				return
+				return nil, errors.WithStack(err)
 			}
 			var askPrice, bidPrice float64
 			askPrice, err = strconv.ParseFloat(pairTickerInfo.Ask[0], 64)
 			if err != nil {
-				return
+				return nil, errors.WithStack(err)
 			}
 			bidPrice, err = strconv.ParseFloat(pairTickerInfo.Bid[0], 64)
 			if err != nil {
-				return
+				return nil, errors.WithStack(err)
 			}
 			prices = append(prices, model.Price{
 				Date:         time.Now(),
@@ -137,7 +145,7 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 	// get response form kraken api
 	response, err := api.client.Balance()
 	if err != nil {
-		return
+		return errors.WithStack(err)
 	}
 
 	// search required value from response
