@@ -56,8 +56,8 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	// fill order if conditions are ok
-	//if form.IndexPrice.Ask <= minimumAsk {
-	if form.IndexPrice.Ask >= maximumAsk {
+	if form.IndexPrice.Ask <= minimumAsk {
+		//if form.IndexPrice.Ask >= maximumAsk {
 		var amount float64
 		amount, err = algo.getAmountToBuy(form)
 		if err != nil {
