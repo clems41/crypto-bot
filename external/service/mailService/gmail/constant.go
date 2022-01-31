@@ -15,3 +15,7 @@ const (
 	smtpPortTls = "587"
 	smtpPortSsl = "465"
 )
+
+const (
+	defaultFrom = "Crypto-bot"
+)

@@ -98,6 +98,14 @@ func (svc *service) Start() (err error) {
 		default:
 			err = svc.applyTradingAlgorithm()
 			if err != nil {
+				sendRequest := mailService.SendRequest{
+					Subject: "Error occurs with Crypto-bot",
+					Body:    err.Error(),
+				}
+				errMail := svc.mailService.Send(sendRequest)
+				if errMail != nil {
+					logger.Error(errMail)
+				}
 				return
 			}
 		}
@@ -265,11 +273,10 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 		if !ok || previousOrder.Status != order.Status {
 			// if new order or status has been updated, send email with order info
 			sendRequest := mailService.SendRequest{
-				From:    platform.Name(),
 				Subject: fmt.Sprintf("New order from %s", platform.Name()),
 				Body:    order.String(),
 			}
-			_, err = svc.mailService.Send(sendRequest)
+			err = svc.mailService.Send(sendRequest)
 			if err != nil {
 				return
 			}

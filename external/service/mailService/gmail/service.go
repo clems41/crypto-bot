@@ -36,7 +36,7 @@ func NewService() (svc *service, err error) {
 	return
 }
 
-func (svc *service) Send(request mailService.SendRequest) (response mailService.SendResponse, err error) {
+func (svc *service) Send(request mailService.SendRequest) (err error) {
 	if !svc.sendMail {
 		logger.Debugf("SEND_MAIL variable has been set to false, mail will not be sent.")
 		return
@@ -44,10 +44,10 @@ func (svc *service) Send(request mailService.SendRequest) (response mailService.
 	// Authentication.
 	auth := smtp.PlainAuth("", svc.smtpUser, svc.smtpPassword, smtpServer)
 	message := fmt.Sprintf("From: <%s>\r\nTo: <%s>\r\nSubject: %s\r\n\r\n%s",
-		request.From, svc.smtpUser, request.Subject, request.Body)
+		defaultFrom, svc.smtpUser, request.Subject, request.Body)
 
 	// Sending email.
-	err = smtp.SendMail(smtpServer+":"+smtpPortTls, auth, request.From, []string{svc.smtpUser}, []byte(message))
+	err = smtp.SendMail(smtpServer+":"+smtpPortTls, auth, defaultFrom, []string{svc.smtpUser}, []byte(message))
 	if err != nil {
 		return
 	}
