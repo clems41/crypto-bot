@@ -232,11 +232,11 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 
 	// find close condition type
 	var closeOrderType string
-	if strings.Contains(krakenOrder.Description.Close, typeConverter[tradingConst.LimitCloseConditionType]) {
+	if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.LimitCloseConditionType]) {
 		closeOrderType = tradingConst.LimitCloseConditionType
-	} else if strings.Contains(krakenOrder.Description.Close, typeConverter[tradingConst.TakeProfitCloseConditionType]) {
+	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.TakeProfitCloseConditionType]) {
 		closeOrderType = tradingConst.TakeProfitCloseConditionType
-	} else if strings.Contains(krakenOrder.Description.Close, typeConverter[tradingConst.StopLossCloseConditionType]) {
+	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.StopLossCloseConditionType]) {
 		closeOrderType = tradingConst.StopLossCloseConditionType
 	}
 

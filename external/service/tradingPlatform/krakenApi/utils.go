@@ -50,6 +50,14 @@ var (
 )
 
 var (
+	closeTypeDescriptionConverter = map[string]string{
+		tradingConst.LimitOrderType:      "limit",
+		tradingConst.StopLossOrderType:   "stop loss",
+		tradingConst.TakeProfitOrderType: "take profit",
+	}
+)
+
+var (
 	statusConverter = map[string]string{
 		tradingConst.OpenOrderStatus:   "open",
 		tradingConst.CloseOrderStatus:  "closed",

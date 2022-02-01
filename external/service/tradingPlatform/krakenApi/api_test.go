@@ -59,7 +59,7 @@ func TestKrakenApi_convertOrderFromPlatformToProject(t *testing.T) {
 	closeTime := time.Now()
 	pair := tradingConst.EthEurPair
 	closePrice := 5423.5
-	closeCondition := tradingConst.LimitCloseConditionType
+	closeCondition := tradingConst.TakeProfitCloseConditionType
 	orderType := tradingConst.MarketOrderType
 	price := 5423.1
 	side := tradingConst.BuySideOrder
@@ -73,7 +73,7 @@ func TestKrakenApi_convertOrderFromPlatformToProject(t *testing.T) {
 		CloseTime:     float64(closeTime.Unix()),
 		Description: krakenClient.OrderDescription{
 			AssetPair: "ETHEUR",
-			Close:     fmt.Sprintf("close position @ %s %f", typeConverter[closeCondition], closePrice),
+			Close:     fmt.Sprintf("close position @ %s %f", closeTypeDescriptionConverter[closeCondition], closePrice),
 			Leverage:  "0",
 			OrderType: typeConverter[orderType],
 			Type:      sideConverter[side],
