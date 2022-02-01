@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"google.golang.org/api/sheets/v4"
 	"reflect"
-	"time"
 )
 
 var _ repository.Repository = (*repo)(nil)
@@ -104,14 +103,14 @@ func (r *repo) StoreOrder(order *model.Order) (err error) {
 	if err != nil {
 		return
 	}
-	order.Date = time.Now()
 
 	// append new line in google spreadsheet
 	valueRange := sheets.ValueRange{
 		Values: [][]interface{}{
 			{
 				order.ID,
-				order.Date,
+				order.OpenTime,
+				order.CloseTime,
 				order.Pair,
 				order.Side,
 				order.Volume,

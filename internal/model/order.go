@@ -9,7 +9,8 @@ import (
 
 type Order struct {
 	ID                  string
-	Date                time.Time
+	OpenTime            time.Time
+	CloseTime           time.Time
 	Pair                string
 	Side                string  `validate:"oneof=buy sell"`                           // buy or sell
 	Volume              float64 `validate:"gte=0"`                                    // quantity of currency to buy/sell, can be 0, will be filled by trading platform
@@ -34,7 +35,8 @@ func (order Order) Validate() (err error) {
 }
 
 func (order Order) String() (str string) {
-	return fmt.Sprintf("{ %s : %s %s at %s with volume=%f, price=%f, amount=%f, status=%s, fees=%f, closeType=%s, closePrice=%f}",
-		order.PlatformName, order.Side, order.Pair, order.Date.Format(timeConst.DefaultFormatTimeLayout), order.Volume,
-		order.Price, order.Amount, order.Status, order.Fees, order.CloseConditionType, order.CloseConditionPrice)
+	return fmt.Sprintf("{ %s : %s %s at (open=%s close=%s) with volume=%f, price=%f, amount=%f, status=%s, fees=%f, closeType=%s, closePrice=%f}",
+		order.PlatformName, order.Side, order.Pair, order.OpenTime.Format(timeConst.DefaultFormatTimeLayout),
+		order.CloseTime.Format(timeConst.DefaultFormatTimeLayout), order.Volume, order.Price, order.Amount,
+		order.Status, order.Fees, order.CloseConditionType, order.CloseConditionPrice)
 }

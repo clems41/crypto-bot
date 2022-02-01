@@ -9,7 +9,9 @@ import (
 	krakenClient "github.com/beldur/kraken-go-api-client"
 	"github.com/pkg/errors"
 	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -58,8 +60,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
 	}
 	orderParameters := map[string]string{
-		priceParameter:    fmt.Sprintf("%f", order.Price),
-		validateParameter: "true",
+		priceParameter: fmt.Sprintf("%f", order.Price),
 	}
 	if closeOrderType != "" {
 		orderParameters[closeOrderTypeParameter] = closeOrderType
@@ -73,7 +74,6 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 		return errors.WithStack(err)
 	}
 
-	// fill order as mock
 	if len(response.TransactionIds) > 0 {
 		order.ID = response.TransactionIds[0]
 	}
@@ -134,10 +134,44 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 }
 
 func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
+	response, err := api.client.OpenOrders(nil)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for _, krakenOrder := range response.Open {
+		var order model.Order
+		order, err = api.convertOrderFromPlatformToProject(krakenOrder)
+		if err != nil {
+			return
+		}
+		orders = append(orders, order)
+	}
 	return
 }
 
-func (api *krakenApi) GetAllOrders() (orders []model.Order, err error) {
+func (api *krakenApi) GetAllOrders(since time.Time) (orders []model.Order, err error) {
+	// retrieve close orders
+	response, err := api.client.ClosedOrders(map[string]string{
+		startCloseOrderParameter: fmt.Sprintf("%d", since.Unix()),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for _, krakenOrder := range response.Closed {
+		var order model.Order
+		order, err = api.convertOrderFromPlatformToProject(krakenOrder)
+		if err != nil {
+			return
+		}
+		orders = append(orders, order)
+	}
+
+	// adding open orders
+	openOrders, err := api.GetOpenOrders()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	orders = append(orders, openOrders...)
 	return
 }
 
@@ -164,5 +198,75 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 	}
 
 	balance.UpdatedAt = time.Now()
+	return
+}
+
+func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient.Order) (order model.Order, err error) {
+	projectPair, err := GetProjectAssetPair(krakenOrder.Description.AssetPair)
+	if err != nil {
+		return order, errors.WithStack(err)
+	}
+	projectSide, err := GetProjectSide(krakenOrder.Description.Type)
+	if err != nil {
+		return order, errors.WithStack(err)
+	}
+	projectStatus, err := GetProjectStatus(krakenOrder.Status)
+	if err != nil {
+		return order, errors.WithStack(err)
+	}
+	projectOrderType, err := GetProjectOrderType(krakenOrder.Description.OrderType)
+	if err != nil {
+		return order, errors.WithStack(err)
+	}
+	var leverage int64
+	if krakenOrder.Description.Leverage != "" && krakenOrder.Description.Leverage != "none" {
+		leverage, err = strconv.ParseInt(krakenOrder.Description.Leverage, 0, 64)
+		if err != nil {
+			return order, errors.WithStack(err)
+		}
+	}
+	volume, err := strconv.ParseFloat(krakenOrder.Volume, 64)
+	if err != nil {
+		return order, errors.WithStack(err)
+	}
+
+	// find close condition type
+	var closeOrderType string
+	if strings.Contains(krakenOrder.Description.Close, typeConverter[tradingConst.LimitCloseConditionType]) {
+		closeOrderType = tradingConst.LimitCloseConditionType
+	} else if strings.Contains(krakenOrder.Description.Close, typeConverter[tradingConst.TakeProfitCloseConditionType]) {
+		closeOrderType = tradingConst.TakeProfitCloseConditionType
+	} else if strings.Contains(krakenOrder.Description.Close, typeConverter[tradingConst.StopLossCloseConditionType]) {
+		closeOrderType = tradingConst.StopLossCloseConditionType
+	}
+
+	// find close condition price
+	var closeConditionPrice float64
+	re := regexp.MustCompile("[0-9.]+")
+	result := re.FindAllString(krakenOrder.Description.Close, 1)
+	if len(result) > 0 {
+		closeConditionPrice, err = strconv.ParseFloat(result[0], 64)
+		if err != nil {
+			return order, errors.WithStack(err)
+		}
+	}
+
+	order = model.Order{
+		ID:                  krakenOrder.TransactionID,
+		OpenTime:            time.Unix(int64(krakenOrder.OpenTime), 0),
+		CloseTime:           time.Unix(int64(krakenOrder.CloseTime), 0),
+		Pair:                projectPair,
+		Side:                projectSide,
+		Volume:              volume,
+		Type:                projectOrderType,
+		Price:               krakenOrder.Price,
+		Amount:              krakenOrder.Price * volume,
+		Leverage:            int(leverage),
+		CloseConditionType:  closeOrderType,
+		CloseConditionPrice: closeConditionPrice,
+		Fees:                krakenOrder.Fee,
+		Status:              projectStatus,
+		PlatformName:        api.Name(),
+	}
 	return
 }

@@ -82,7 +82,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	order.ID = uuid.New().String()
 	order.Fees = fees
 	order.Status = tradingConst.OpenOrderStatus
-	order.Date = time.Now()
+	order.OpenTime = time.Now()
 
 	// add orders in memory
 	api.orders = append(api.orders, order)
@@ -158,10 +158,12 @@ func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 	return
 }
 
-func (api *krakenApi) GetAllOrders() (orders []model.Order, err error) {
+func (api *krakenApi) GetAllOrders(since time.Time) (orders []model.Order, err error) {
 	for _, order := range api.orders {
 		if order != nil {
-			orders = append(orders, *order)
+			if order.OpenTime.After(since) {
+				orders = append(orders, *order)
+			}
 		}
 	}
 	return
@@ -219,7 +221,7 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 						}
 						newOrder := model.Order{
 							ID:                 uuid.New().String(),
-							Date:               time.Now(),
+							OpenTime:           time.Now(),
 							Pair:               order.Pair,
 							Side:               closeOrderSide,
 							Type:               order.CloseConditionType,
@@ -248,6 +250,7 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 
 func (api *krakenApi) closeOrder(order *model.Order) (err error) {
 	order.Status = tradingConst.CloseOrderStatus
+	order.CloseTime = time.Now()
 	var currencyNeeded, currencyGot string
 	var ok bool
 	currencyNeeded, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)

@@ -120,7 +120,7 @@ func (svc *service) Stop() {
 	for platformName, platform := range svc.platformApis {
 		logger.Infof("--  %s  --", platformName)
 		// Get all orders
-		orders, err := platform.GetAllOrders()
+		orders, err := platform.GetAllOrders(svc.startTime)
 		if err != nil {
 			return
 		}
@@ -135,21 +135,7 @@ func (svc *service) Stop() {
 			return
 		}
 
-		// Calculate estimated profit
-		endTime := time.Now()
-		tradingDuration := endTime.Sub(svc.startTime)
-		for currency, initialBalanceCurrency := range svc.initialBalanceByPlatformByCurrency[platform.Name()] {
-			finalBalanceCurrency, ok := svc.balanceByPlatform[platformName].ValueByCurrency[currency]
-			if !ok {
-				logger.Errorf("cannot find balance for currency %s", currency)
-				return
-			}
-			oneDayProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 24*time.Hour)
-			oneMonthProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 30*24*time.Hour)
-			oneYearProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 365*24*time.Hour)
-			logger.Infof("With initial balance for currency %s of %f, profit for one day would be %f, for one month %f and for one year %f",
-				currency, initialBalanceCurrency, oneDayProfit, oneMonthProfit, oneYearProfit)
-		}
+		svc.calculateEndProfit(platform)
 	}
 	return
 }
@@ -252,7 +238,7 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 	// reset opened orders
 	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
 
-	orders, err := platform.GetAllOrders()
+	orders, err := platform.GetAllOrders(svc.startTime)
 	if err != nil {
 		return
 	}
@@ -372,4 +358,22 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 		return
 	}
 	return
+}
+
+func (svc *service) calculateEndProfit(platform tradingPlatform.Api) {
+	// Calculate estimated profit
+	endTime := time.Now()
+	tradingDuration := endTime.Sub(svc.startTime)
+	for currency, initialBalanceCurrency := range svc.initialBalanceByPlatformByCurrency[platform.Name()] {
+		finalBalanceCurrency, ok := svc.balanceByPlatform[platform.Name()].ValueByCurrency[currency]
+		if !ok {
+			logger.Errorf("cannot find balance for currency %s", currency)
+			return
+		}
+		oneDayProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 24*time.Hour)
+		oneMonthProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 30*24*time.Hour)
+		oneYearProfit := tradingUtils.EstimateProfit(initialBalanceCurrency, finalBalanceCurrency, tradingDuration, 365*24*time.Hour)
+		logger.Infof("With initial balance for currency %s of %f, profit for one day would be %f, for one month %f and for one year %f",
+			currency, initialBalanceCurrency, oneDayProfit, oneMonthProfit, oneYearProfit)
+	}
 }

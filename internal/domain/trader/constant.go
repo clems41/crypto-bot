@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	delayBetweenEachRun = 5 * time.Second
+	delayBetweenEachRun = 10 * time.Second
 )
 
 var (

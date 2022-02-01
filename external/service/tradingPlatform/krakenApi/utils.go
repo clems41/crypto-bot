@@ -26,6 +26,14 @@ var (
 )
 
 var (
+	assetPairConverter = map[string]string{
+		tradingConst.BtcEurPair:  "XBTEUR",
+		tradingConst.DashEurPair: "DASHEUR",
+		tradingConst.EthEurPair:  "ETHEUR",
+	}
+)
+
+var (
 	sideConverter = map[string]string{
 		tradingConst.BuySideOrder:  "buy",
 		tradingConst.SellSideOrder: "sell",
@@ -38,6 +46,14 @@ var (
 		tradingConst.LimitOrderType:      krakenapi.OTLimit,
 		tradingConst.StopLossOrderType:   krakenapi.OTStopLoss,
 		tradingConst.TakeProfitOrderType: krakenapi.OTTakeProfi,
+	}
+)
+
+var (
+	statusConverter = map[string]string{
+		tradingConst.OpenOrderStatus:   "open",
+		tradingConst.CloseOrderStatus:  "closed",
+		tradingConst.CancelOrderStatus: "canceled",
 	}
 )
 
@@ -57,4 +73,44 @@ func GetProjectPair(krakenPair string) (projectPair string, err error) {
 		}
 	}
 	return projectPair, fmt.Errorf("cannot find project pair for %s", krakenPair)
+}
+
+func GetProjectAssetPair(krakenPair string) (projectPair string, err error) {
+	for project, kraken := range assetPairConverter {
+		if kraken == krakenPair {
+			projectPair = project
+			return
+		}
+	}
+	return projectPair, fmt.Errorf("cannot find project pair for %s", krakenPair)
+}
+
+func GetProjectSide(krakenSide string) (projectSide string, err error) {
+	for project, kraken := range sideConverter {
+		if kraken == krakenSide {
+			projectSide = project
+			return
+		}
+	}
+	return projectSide, fmt.Errorf("cannot find side for %s", krakenSide)
+}
+
+func GetProjectOrderType(krakenType string) (projectType string, err error) {
+	for project, kraken := range typeConverter {
+		if kraken == krakenType {
+			projectType = project
+			return
+		}
+	}
+	return projectType, fmt.Errorf("cannot find type for %s", krakenType)
+}
+
+func GetProjectStatus(krakenStatus string) (projectStatus string, err error) {
+	for project, kraken := range statusConverter {
+		if kraken == krakenStatus {
+			projectStatus = project
+			return
+		}
+	}
+	return projectStatus, fmt.Errorf("cannot find status for %s", krakenStatus)
 }

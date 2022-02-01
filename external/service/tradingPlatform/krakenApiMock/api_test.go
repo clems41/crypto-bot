@@ -8,18 +8,6 @@ import (
 	"time"
 )
 
-func TestApi_ClosePosition(t *testing.T) {
-
-}
-
-func TestApi_GetAllPositions(t *testing.T) {
-
-}
-
-func TestApi_GetOpenedPositions(t *testing.T) {
-
-}
-
 func TestApi_GetIndexPrice(t *testing.T) {
 	apiTest, err := New()
 	require.NoError(t, err)
@@ -41,12 +29,4 @@ func TestApi_GetIndexPrice(t *testing.T) {
 		"Bitcoin ask price should be between 10 000 and 70 000 / unit but it is %0.2f", prices[0].Ask)
 	require.True(t, prices[0].Date.Before(time.Now()) && prices[0].Date.After(time.Now().AddDate(0, 0, -1)),
 		"Date price should be between yesterday and now but it is %s", prices[0].Date.String())
-}
-
-func TestApi_GetWalletBalance(t *testing.T) {
-
-}
-
-func TestApi_OpenPosition(t *testing.T) {
-
 }

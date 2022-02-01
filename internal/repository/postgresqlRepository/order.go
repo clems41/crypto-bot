@@ -5,10 +5,13 @@ import (
 	"crypto-bot/internal/repository"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
+	"time"
 )
 
 type order struct {
 	Metadata
+	OpenTime            time.Time
+	CloseTime           time.Time
 	PlatformOrderID     string `gorm:"uniqueIndex"`
 	Pair                string `gorm:"index"`
 	Side                string `gorm:"index"`
@@ -62,6 +65,8 @@ func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 	orderRepo.Status = orderModel.Status
 	orderRepo.PlatformName = orderModel.PlatformName
 	orderRepo.ExecutionID = r.executionID
+	orderRepo.OpenTime = orderModel.OpenTime
+	orderRepo.CloseTime = orderModel.CloseTime
 
 	// update order if exists, if not create it
 	if orderExists {
@@ -108,7 +113,8 @@ func (r *repo) GetOrderHistory(form repository.GetOrderHistoryForm) (orders []mo
 	for _, orderRepo := range ordersRepo {
 		orders = append(orders, model.Order{
 			ID:                  orderRepo.PlatformOrderID,
-			Date:                orderRepo.CreatedAt,
+			OpenTime:            orderRepo.OpenTime,
+			CloseTime:           orderRepo.CloseTime,
 			Pair:                orderRepo.Pair,
 			Side:                orderRepo.Side,
 			Volume:              orderRepo.Volume,

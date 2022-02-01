@@ -11,8 +11,8 @@ const (
 )
 
 const (
-	priceParameter          = "price"
-	validateParameter       = "validate"
-	closeOrderTypeParameter = "close[ordertype]"
-	closePriceParameter     = "close[price]"
+	priceParameter           = "price"
+	closeOrderTypeParameter  = "close[ordertype]"
+	closePriceParameter      = "close[price]"
+	startCloseOrderParameter = "start"
 )
