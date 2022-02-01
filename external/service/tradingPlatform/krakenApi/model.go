@@ -1,1 +1,1 @@
-package krakenApiMock
+package krakenApi

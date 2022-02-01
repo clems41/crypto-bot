@@ -187,7 +187,8 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			// So we skip this run, and try again the next one.
 			// It can take some time to get enough prices at start, depending on delayBetweenEachRun.
 			if len(prices) < svc.algo.PricesNeeded() {
-				logger.Debugf("Run for pair %s will be skip, doesn't get enough prices from history to know if order should be open", pair)
+				logger.Debugf("Run for pair %s will be skip, doesn't get enough prices from history (need=%d got=%d)",
+					pair, svc.algo.PricesNeeded(), len(prices))
 				continue
 			}
 

@@ -1,4 +1,4 @@
-package krakenApiMock
+package krakenApi
 
 const (
 	envKrakenApiSecret = "KRAKEN_API_SECRET"

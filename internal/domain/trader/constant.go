@@ -16,5 +16,10 @@ var (
 			tradingConst.EthEurPair,
 			tradingConst.DashEurPair,
 		},
+		tradingConst.KrakenPlatform: {
+			tradingConst.BtcEurPair,
+			tradingConst.EthEurPair,
+			tradingConst.DashEurPair,
+		},
 	}
 )
