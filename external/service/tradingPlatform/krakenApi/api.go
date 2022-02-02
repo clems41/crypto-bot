@@ -41,7 +41,7 @@ func (api *krakenApi) Name() (name string) {
 	return tradingConst.KrakenPlatform
 }
 
-func (api *krakenApi) AddOrder(order *model.Order) (err error) {
+func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	// Send request to kraken but with validate=true (order will not be sent, but fields will be validated)
 	pair, err := GetKrakenPair(order.Pair)
 	if err != nil {
@@ -69,17 +69,10 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	if !ok {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
 	}
-	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
+	_, err = api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
-	if len(response.TransactionIds) > 0 {
-		order.ID = response.TransactionIds[0]
-	}
-	order.Fees = order.Amount * takerFees / 100
-	order.Status = tradingConst.CloseOrderStatus
-	order.Amount -= order.Fees
 	return
 }
 
@@ -238,6 +231,8 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 		closeOrderType = tradingConst.TakeProfitCloseConditionType
 	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.StopLossCloseConditionType]) {
 		closeOrderType = tradingConst.StopLossCloseConditionType
+	} else {
+		closeOrderType = tradingConst.NoneCloseConditionType
 	}
 
 	// find close condition price

@@ -32,7 +32,10 @@ func main() {
 	}
 
 	/* Trading platforms */
-	//kraken, err := krakenApiMock.New()
+	/*	krakenMock, err := krakenApiMock.New()
+		if err != nil {
+			logger.Fatal(err)
+		}*/
 	kraken, err := krakenApi.New()
 	if err != nil {
 		logger.Fatal(err)
@@ -58,6 +61,7 @@ func main() {
 	tradingService, err := trader.NewService(
 		[]tradingPlatform.Api{
 			kraken,
+			//krakenMock,
 		},
 		postgresqlRepo,
 		algo,

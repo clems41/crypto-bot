@@ -50,6 +50,10 @@ func TestKrakenApi_GetAllOrders(t *testing.T) {
 	orders, err := apiTest.GetAllOrders(time.Now().AddDate(-1, 0, 0))
 	require.NoError(t, err)
 	require.True(t, len(orders) > 0, "More than 0 orders should be returned")
+	for _, order := range orders {
+		err = order.Validate()
+		require.NoError(t, err)
+	}
 }
 
 func TestKrakenApi_convertOrderFromPlatformToProject(t *testing.T) {

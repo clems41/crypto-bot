@@ -12,7 +12,7 @@ const (
 
 const (
 	priceParameter           = "price"
-	closeOrderTypeParameter  = "close[ordertype]"
-	closePriceParameter      = "close[price]"
+	closeOrderTypeParameter  = "close_order_type"
+	closePriceParameter      = "close_price"
 	startCloseOrderParameter = "start"
 )

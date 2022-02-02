@@ -341,20 +341,14 @@ func (svc *service) addOrder(platform tradingPlatform.Api, order *model.Order) (
 	order.PlatformName = platform.Name()
 
 	// add order using platform
-	err = platform.AddOrder(order)
+	err = platform.AddOrder(*order)
 	if err != nil {
 		return
 	}
-	logger.Info(*order)
+	logger.Info(order)
 
 	// update balance
 	err = svc.updateBalance(platform)
-	if err != nil {
-		return
-	}
-
-	// store order into repository
-	err = svc.repo.StoreOrder(order)
 	if err != nil {
 		return
 	}

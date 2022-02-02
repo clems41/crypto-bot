@@ -45,7 +45,7 @@ func (api *krakenApi) Name() (name string) {
 	return tradingConst.KrakenMockPlatform
 }
 
-func (api *krakenApi) AddOrder(order *model.Order) (err error) {
+func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	// Send request to kraken but with validate=true (order will not be sent, but fields will be validated)
 	pair, err := GetKrakenPair(order.Pair)
 	if err != nil {
@@ -85,7 +85,7 @@ func (api *krakenApi) AddOrder(order *model.Order) (err error) {
 	order.OpenTime = time.Now()
 
 	// add orders in memory
-	api.orders = append(api.orders, order)
+	api.orders = append(api.orders, &order)
 	return
 }
 
@@ -236,7 +236,7 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 							newOrder.Amount = order.Amount
 							newOrder.Volume = newOrder.Amount / newOrder.Price
 						}
-						err = api.AddOrder(&newOrder)
+						err = api.AddOrder(newOrder)
 						if err != nil {
 							return
 						}

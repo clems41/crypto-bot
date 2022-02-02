@@ -7,7 +7,7 @@ import (
 
 type Api interface {
 	Name() (name string)
-	AddOrder(order *model.Order) (err error)
+	AddOrder(order model.Order) (err error)
 	GetIndexPrices(pairs ...string) (prices []model.Price, err error)
 	GetOpenOrders() (orders []model.Order, err error)
 	GetAllOrders(since time.Time) (orders []model.Order, err error)
