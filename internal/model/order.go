@@ -9,10 +9,10 @@ import (
 )
 
 type Order struct {
-	ID                  string
-	OpenTime            time.Time
+	ID                  string    `validate:"required"`
+	OpenTime            time.Time `validate:"required"`
 	CloseTime           time.Time
-	Pair                string
+	Pair                string  `validate:"required"`
 	Side                string  `validate:"oneof=buy sell"`                           // buy or sell
 	Volume              float64 `validate:"gte=0"`                                    // quantity of currency to buy/sell, can be 0, will be filled by trading platform
 	Type                string  `validate:"oneof=market limit stop-loss take-profit"` // market, limit, stop-loss, take-profit

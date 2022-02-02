@@ -131,12 +131,13 @@ func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	for _, krakenOrder := range response.Open {
+	for orderID, krakenOrder := range response.Open {
 		var order model.Order
 		order, err = api.convertOrderFromPlatformToProject(krakenOrder)
 		if err != nil {
 			return
 		}
+		order.ID = orderID
 		orders = append(orders, order)
 	}
 	return
@@ -150,12 +151,13 @@ func (api *krakenApi) GetAllOrders(since time.Time) (orders []model.Order, err e
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	for _, krakenOrder := range response.Closed {
+	for orderID, krakenOrder := range response.Closed {
 		var order model.Order
 		order, err = api.convertOrderFromPlatformToProject(krakenOrder)
 		if err != nil {
 			return
 		}
+		order.ID = orderID
 		orders = append(orders, order)
 	}
 
@@ -247,7 +249,6 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 	}
 
 	order = model.Order{
-		ID:                  krakenOrder.TransactionID,
 		OpenTime:            time.Unix(int64(krakenOrder.OpenTime), 0),
 		CloseTime:           time.Unix(int64(krakenOrder.CloseTime), 0),
 		Pair:                projectPair,
