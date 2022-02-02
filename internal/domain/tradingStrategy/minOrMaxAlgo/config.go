@@ -18,8 +18,8 @@ const (
 )
 
 const (
-	defaultNumberOfPreviousPricesToCompare        = "1" // 180 * 10s --> 30min
-	defaultPercentPriceBelowToBuy                 = "0.00"
+	defaultNumberOfPreviousPricesToCompare        = "180" // 180 * 10s --> 30min
+	defaultPercentPriceBelowToBuy                 = "0.05"
 	defaultMinimumResultInPercentBeforeCloseOrder = "0.7"
 	defaultMaxOpenedOrdersByPair                  = "1"
 	defaultMinimumAmount                          = "10"
@@ -30,13 +30,13 @@ var (
 	initialPairsToTradeByPlatform = map[string][]tradingConst.Pair{
 		tradingConst.KrakenMockPlatform: {
 			tradingConst.BitcoinEuro,
-			tradingConst.EthereumBitcoin,
+			tradingConst.EthereumEuro,
 			tradingConst.DashEuro,
 			tradingConst.CardanoEuro,
 		},
 		tradingConst.KrakenPlatform: {
 			tradingConst.BitcoinEuro,
-			tradingConst.EthereumBitcoin,
+			tradingConst.EthereumEuro,
 			tradingConst.DashEuro,
 			tradingConst.CardanoEuro,
 		},
