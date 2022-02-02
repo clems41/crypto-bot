@@ -225,6 +225,16 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 		return order, errors.WithStack(err)
 	}
 
+	var price float64
+	if projectStatus == tradingConst.OpenOrderStatus {
+		price, err = strconv.ParseFloat(krakenOrder.Description.PrimaryPrice, 64)
+		if err != nil {
+			return
+		}
+	} else {
+		price = krakenOrder.Price
+	}
+
 	// find close condition type
 	var closeOrderType string
 	if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.LimitCloseConditionType]) {
@@ -255,8 +265,8 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 		Side:                projectSide,
 		Volume:              volume,
 		Type:                projectOrderType,
-		Price:               krakenOrder.Price,
-		Amount:              krakenOrder.Price * volume,
+		Price:               price,
+		Amount:              price * volume,
 		Leverage:            int(leverage),
 		CloseConditionType:  closeOrderType,
 		CloseConditionPrice: closeConditionPrice,

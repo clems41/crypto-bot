@@ -32,8 +32,8 @@ func (order Order) Validate() (err error) {
 	if err != nil {
 		return
 	}
-	if order.Status == tradingConst.CloseOrderStatus && order.Price == 0 {
-		return fmt.Errorf("price should not be 0 if status is close")
+	if order.Status != tradingConst.CancelOrderStatus && order.Price == 0 {
+		return fmt.Errorf("price should not be 0 if status is not cancel")
 
 	}
 	return
