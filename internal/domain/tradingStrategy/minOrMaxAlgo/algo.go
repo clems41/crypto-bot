@@ -79,12 +79,12 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 		}
 		order = model.Order{
 			Pair:                form.PairToTrade,
-			Side:                tradingConst.BuySideOrder,
-			Type:                tradingConst.LimitOrderType,
+			Side:                tradingConst.Buy,
+			Type:                tradingConst.Limit,
 			Price:               price,
 			Volume:              volume,
 			Amount:              amount,
-			CloseConditionType:  tradingConst.LimitCloseConditionType,
+			CloseConditionType:  tradingConst.Limit,
 			CloseConditionPrice: closeConditionPrice,
 		}
 		shouldOpen = true
@@ -103,7 +103,7 @@ func (algo *algorithm) MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int) {
 
 func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (amount float64, err error) {
 	// find currency needed and related balance
-	currencyNeededToBuy, ok := tradingUtils.CurrencyNeededToTradePair(form.PairToTrade, tradingConst.BuySideOrder)
+	currencyNeededToBuy, ok := tradingUtils.CurrencyNeededToTradePair(form.PairToTrade, tradingConst.Buy)
 	if !ok {
 		return amount, fmt.Errorf("cannot find currency to buy %s", form.PairToTrade)
 	}
@@ -118,8 +118,8 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	// count all pair that are using this currency
 	var nbPairUsingCurrency int
 	for _, pair := range form.AllPairsTraded {
-		var currency string
-		currency, ok = tradingUtils.CurrencyNeededToTradePair(pair, tradingConst.BuySideOrder)
+		var currency tradingConst.Currency
+		currency, ok = tradingUtils.CurrencyNeededToTradePair(pair, tradingConst.Buy)
 		if !ok {
 			return amount, fmt.Errorf("cannot find currency to buy %s", form.PairToTrade)
 		}
@@ -134,15 +134,15 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	// count number of current open orders that already used currency balance
 	var nbOpenOrderForPair, nbOpenOrderThatAlreadyUsedCurrency int
 	for _, order := range form.OpenOrders {
-		if order.Pair == form.PairToTrade && order.Status == tradingConst.OpenOrderStatus {
+		if order.Pair == form.PairToTrade && order.Status == tradingConst.Open {
 			nbOpenOrderForPair++
 		}
-		var currency string
-		currency, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, tradingConst.BuySideOrder)
+		var currency tradingConst.Currency
+		currency, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, tradingConst.Buy)
 		if !ok {
 			return amount, fmt.Errorf("cannot find currency to buy %s", form.PairToTrade)
 		}
-		if currency == currencyNeededToBuy && order.Side == tradingConst.SellSideOrder {
+		if currency == currencyNeededToBuy && order.Side == tradingConst.Sell {
 			nbOpenOrderThatAlreadyUsedCurrency++
 		}
 	}

@@ -11,10 +11,11 @@ import (
 func TestApi_GetIndexPrice(t *testing.T) {
 	apiTest, err := New()
 	require.NoError(t, err)
-	pair := tradingConst.BtcEurPair
+	pair := tradingConst.BitcoinEuro
+	fakePair := tradingConst.Pair(fake.Word())
 
 	// try with non-existing pair, should return error
-	prices, err := apiTest.GetIndexPrices(fake.Word())
+	prices, err := apiTest.GetIndexPrices(fakePair)
 	require.Error(t, err)
 
 	// try with existing pair, should be ok

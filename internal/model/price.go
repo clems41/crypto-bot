@@ -2,17 +2,18 @@ package model
 
 import (
 	"crypto-bot/internal/constant/timeConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"time"
 )
 
 type Price struct {
-	Date         time.Time `validate:"required"`
-	PlatformName string    `validate:"required"`
-	Pair         string    `validate:"required"`
-	Ask          float64   `validate:"gte=0"`
-	Bid          float64   `validate:"gte=0"`
+	Date         time.Time         `validate:"required"`
+	PlatformName string            `validate:"required"`
+	Pair         tradingConst.Pair `validate:"required"`
+	Ask          float64           `validate:"gte=0"`
+	Bid          float64           `validate:"gte=0"`
 }
 
 func (price *Price) Validate() (err error) {

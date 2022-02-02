@@ -25,22 +25,22 @@ type Service interface {
 	getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, err error)
 	updateOpenedOrders(platform tradingPlatform.Api) (err error)
 	updateBalance(platform tradingPlatform.Api) (err error)
-	updateIndexPrice(platform tradingPlatform.Api, pairs []string) (err error)
+	updateIndexPrice(platform tradingPlatform.Api, pairs []tradingConst.Pair) (err error)
 	addOrder(platform tradingPlatform.Api, order *model.Order) (err error)
 }
 
 type service struct {
-	quitChannel                        chan bool                           // quit goroutine when program exit
-	platformApis                       map[string]tradingPlatform.Api      // communicate with trading platforms
-	repo                               repository.Repository               // use to store data
-	algo                               tradingStrategy.Algo                // use to know if order should be open based on prices
-	startTime                          time.Time                           // datetime when lago has been started
-	mailService                        mailService.Service                 // use to send order by mail
-	initialBalanceByPlatformByCurrency map[string]map[string]float64       // initial balance before opening first order by platform and by currency
-	balanceByPlatform                  map[string]model.Balance            // current balance
-	indexPriceByPlatformByPair         map[string]map[string]model.Price   // store last index got from platform
-	openedOrdersByPlatformByPair       map[string]map[string][]model.Order // store opened orders calculating amount to invest by pair
-	previousOrdersByPlatformById       map[string]map[string]model.Order   // store orders
+	quitChannel                        chan bool                                      // quit goroutine when program exit
+	platformApis                       map[string]tradingPlatform.Api                 // communicate with trading platforms
+	repo                               repository.Repository                          // use to store data
+	algo                               tradingStrategy.Algo                           // use to know if order should be open based on prices
+	startTime                          time.Time                                      // datetime when lago has been started
+	mailService                        mailService.Service                            // use to send order by mail
+	initialBalanceByPlatformByCurrency map[string]map[tradingConst.Currency]float64   // initial balance before opening first order by platform and by currency
+	balanceByPlatform                  map[string]model.Balance                       // current balance
+	indexPriceByPlatformByPair         map[string]map[tradingConst.Pair]model.Price   // store last index got from platform
+	openedOrdersByPlatformByPair       map[string]map[tradingConst.Pair][]model.Order // store opened orders calculating amount to invest by pair
+	previousOrdersByPlatformById       map[string]map[string]model.Order              // store orders
 }
 
 func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, algo tradingStrategy.Algo,
@@ -55,10 +55,10 @@ func NewService(platformApis []tradingPlatform.Api, repo repository.Repository, 
 		repo:                               repo,
 		algo:                               algo,
 		mailService:                        mailService,
-		initialBalanceByPlatformByCurrency: make(map[string]map[string]float64),
+		initialBalanceByPlatformByCurrency: make(map[string]map[tradingConst.Currency]float64),
 		balanceByPlatform:                  make(map[string]model.Balance),
-		indexPriceByPlatformByPair:         make(map[string]map[string]model.Price),
-		openedOrdersByPlatformByPair:       make(map[string]map[string][]model.Order),
+		indexPriceByPlatformByPair:         make(map[string]map[tradingConst.Pair]model.Price),
+		openedOrdersByPlatformByPair:       make(map[string]map[tradingConst.Pair][]model.Order),
 		previousOrdersByPlatformById:       make(map[string]map[string]model.Order),
 	}, nil
 }
@@ -72,12 +72,12 @@ func (svc *service) Start() (err error) {
 	for platformName, platform := range svc.platformApis {
 		svc.balanceByPlatform[platformName] = model.Balance{
 			PlatformName:    platformName,
-			ValueByCurrency: make(map[string]float64),
+			ValueByCurrency: make(map[tradingConst.Currency]float64),
 		}
 		svc.previousOrdersByPlatformById[platformName] = make(map[string]model.Order)
-		svc.openedOrdersByPlatformByPair[platformName] = make(map[string][]model.Order)
-		svc.initialBalanceByPlatformByCurrency[platformName] = make(map[string]float64)
-		svc.indexPriceByPlatformByPair[platformName] = make(map[string]model.Price)
+		svc.openedOrdersByPlatformByPair[platformName] = make(map[tradingConst.Pair][]model.Order)
+		svc.initialBalanceByPlatformByCurrency[platformName] = make(map[tradingConst.Currency]float64)
+		svc.indexPriceByPlatformByPair[platformName] = make(map[tradingConst.Pair]model.Price)
 
 		// Set initial balance, useful to calculate ending profit, result, etc...
 		err = svc.updateBalance(platform)
@@ -195,7 +195,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			// find order history
 			orderForm := repository.GetOrderHistoryForm{
 				PlatformName: platformName,
-				Status:       tradingConst.OpenOrderStatus,
+				Status:       tradingConst.Open,
 			}
 			var openOrders []model.Order
 			openOrders, err = svc.repo.GetOrderHistory(orderForm)
@@ -237,7 +237,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 
 func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error) {
 	// reset opened orders
-	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[string][]model.Order)
+	svc.openedOrdersByPlatformByPair[platform.Name()] = make(map[tradingConst.Pair][]model.Order)
 
 	orders, err := platform.GetAllOrders(svc.startTime)
 	if err != nil {
@@ -250,7 +250,7 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 		}
 
 		// fill open orders map
-		if order.Status == tradingConst.OpenOrderStatus {
+		if order.Status == tradingConst.Open {
 			svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair] = append(
 				svc.openedOrdersByPlatformByPair[platform.Name()][order.Pair], order)
 		}
@@ -274,7 +274,7 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 }
 
 func (svc *service) getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, err error) {
-	info.NbOpenOrderByPair = make(map[string]int)
+	info.NbOpenOrderByPair = make(map[tradingConst.Pair]int)
 	// count number of opened orders by pair
 	openedOrdersByPlatform, ok := svc.openedOrdersByPlatformByPair[platform.Name()]
 	if !ok {
@@ -287,7 +287,7 @@ func (svc *service) getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, 
 			info.PairsToTrade = append(info.PairsToTrade, pair)
 		}
 		for _, order := range openedOrdersByPlatform[pair] {
-			if order.Status == tradingConst.OpenOrderStatus {
+			if order.Status == tradingConst.Open {
 				info.NbOpenOrderByPair[pair]++
 			}
 		}
@@ -315,7 +315,7 @@ func (svc *service) updateBalance(platform tradingPlatform.Api) (err error) {
 	return
 }
 
-func (svc *service) updateIndexPrice(platform tradingPlatform.Api, pairs []string) (err error) {
+func (svc *service) updateIndexPrice(platform tradingPlatform.Api, pairs []tradingConst.Pair) (err error) {
 	prices, err := platform.GetIndexPrices(pairs...)
 	if err != nil {
 		return

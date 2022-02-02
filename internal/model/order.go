@@ -12,18 +12,18 @@ type Order struct {
 	ID                  string    `validate:"required"`
 	OpenTime            time.Time `validate:"required"`
 	CloseTime           time.Time
-	Pair                string  `validate:"required"`
-	Side                string  `validate:"oneof=buy sell"`                           // buy or sell
-	Volume              float64 `validate:"gte=0"`                                    // quantity of currency to buy/sell, can be 0, will be filled by trading platform
-	Type                string  `validate:"oneof=market limit stop-loss take-profit"` // market, limit, stop-loss, take-profit
-	Price               float64 `validate:"gte=0"`                                    // price of traded pair
-	Amount              float64 `validate:"gte=0"`                                    // amount of initial currency to spend to buy another one
-	Leverage            int     `validate:"gte=0"`                                    // effet de levier x1, x2 ,x3, etc...
-	CloseConditionType  string  `validate:"oneof=none limit stop-loss take-profit"`   // condition to create an opposite order when the first one is completed : limit, stop-loss, take-profit
-	CloseConditionPrice float64 `validate:"gte=0"`                                    // price that opposite order should get before executing order
-	Fees                float64 `validate:"gte=0"`                                    // fees taken by trading platform
-	Status              string  `validate:"oneof=open close cancel"`                  // order status
-	PlatformName        string  `validate:"required"`                                 // name of platform
+	Pair                tradingConst.Pair        `validate:"required"`
+	Side                tradingConst.OrderSide   `validate:"oneof=buy sell"`                           // buy or sell
+	Volume              float64                  `validate:"gte=0"`                                    // quantity of currency to buy/sell, can be 0, will be filled by trading platform
+	Type                tradingConst.OrderType   `validate:"oneof=market limit stop-loss take-profit"` // market, limit, stop-loss, take-profit
+	Price               float64                  `validate:"gte=0"`                                    // price of traded pair
+	Amount              float64                  `validate:"gte=0"`                                    // amount of initial currency to spend to buy another one
+	Leverage            int                      `validate:"gte=0"`                                    // effet de levier x1, x2 ,x3, etc...
+	CloseConditionType  tradingConst.OrderType   `validate:"oneof=none limit stop-loss take-profit"`   // condition to create an opposite order when the first one is completed : limit, stop-loss, take-profit
+	CloseConditionPrice float64                  `validate:"gte=0"`                                    // price that opposite order should get before executing order
+	Fees                float64                  `validate:"gte=0"`                                    // fees taken by trading platform
+	Status              tradingConst.OrderStatus `validate:"oneof=open close cancel"`                  // order status
+	PlatformName        string                   `validate:"required"`                                 // name of platform
 }
 
 func (order Order) Validate() (err error) {
@@ -32,7 +32,7 @@ func (order Order) Validate() (err error) {
 	if err != nil {
 		return
 	}
-	if order.Status != tradingConst.CancelOrderStatus && order.Price == 0 {
+	if order.Status != tradingConst.Cancel && order.Price == 0 {
 		return fmt.Errorf("price should not be 0 if status is not cancel")
 
 	}

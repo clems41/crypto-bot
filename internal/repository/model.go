@@ -1,12 +1,15 @@
 package repository
 
-import "time"
+import (
+	"crypto-bot/internal/constant/tradingConst"
+	"time"
+)
 
 /* Get Price */
 
 type GetPriceHistoryForm struct {
 	PlatformName string
-	Pair         string
+	Pair         tradingConst.Pair
 	SinceTime    time.Time
 }
 
@@ -14,6 +17,6 @@ type GetPriceHistoryForm struct {
 
 type GetOrderHistoryForm struct {
 	PlatformName string
-	Pair         string
-	Status       string
+	Pair         tradingConst.Pair
+	Status       tradingConst.OrderStatus
 }

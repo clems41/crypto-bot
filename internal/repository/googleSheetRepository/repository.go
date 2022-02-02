@@ -3,6 +3,7 @@ package googleSheetRepository
 import (
 	"context"
 	"crypto-bot/internal/constant/timeConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"fmt"
@@ -14,8 +15,8 @@ var _ repository.Repository = (*repo)(nil)
 
 type repo struct {
 	googleSheetService     *sheets.Service
-	previousBalance        map[string]float64
-	pricesByPlatformByPair map[string]map[string][]model.Price
+	previousBalance        map[tradingConst.Currency]float64
+	pricesByPlatformByPair map[string]map[tradingConst.Pair][]model.Price
 }
 
 func New(ctx context.Context) (r *repo, err error) {
@@ -25,8 +26,8 @@ func New(ctx context.Context) (r *repo, err error) {
 	}
 	r = &repo{
 		googleSheetService:     googleSheetService,
-		previousBalance:        make(map[string]float64),
-		pricesByPlatformByPair: make(map[string]map[string][]model.Price),
+		previousBalance:        make(map[tradingConst.Currency]float64),
+		pricesByPlatformByPair: make(map[string]map[tradingConst.Pair][]model.Price),
 	}
 	return
 }
@@ -39,7 +40,7 @@ func (r *repo) StorePrice(price *model.Price) (err error) {
 
 	// store in memory
 	if r.pricesByPlatformByPair[price.PlatformName] == nil {
-		r.pricesByPlatformByPair[price.PlatformName] = make(map[string][]model.Price)
+		r.pricesByPlatformByPair[price.PlatformName] = make(map[tradingConst.Pair][]model.Price)
 	}
 	r.pricesByPlatformByPair[price.PlatformName][price.Pair] = append(
 		r.pricesByPlatformByPair[price.PlatformName][price.Pair], *price)

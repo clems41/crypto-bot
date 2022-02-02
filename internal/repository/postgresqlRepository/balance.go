@@ -30,7 +30,7 @@ func (r *repo) StoreBalance(balanceModel *model.Balance) (err error) {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				// insert new balance value if same previous one has not been found
 				balanceRepo.PlatformName = balanceModel.PlatformName
-				balanceRepo.Currency = currency
+				balanceRepo.Currency = string(currency)
 				balanceRepo.Value = value
 				balanceRepo.ExecutionID = r.executionID
 				err = r.db.

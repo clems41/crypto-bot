@@ -2,6 +2,7 @@ package model
 
 import (
 	"crypto-bot/internal/constant/timeConst"
+	"crypto-bot/internal/constant/tradingConst"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"strings"
@@ -9,9 +10,9 @@ import (
 )
 
 type Balance struct {
-	PlatformName    string             `validate:"required"`
-	ValueByCurrency map[string]float64 `validate:"required"`
-	UpdatedAt       time.Time          `validate:"required"`
+	PlatformName    string                            `validate:"required"`
+	ValueByCurrency map[tradingConst.Currency]float64 `validate:"required"`
+	UpdatedAt       time.Time                         `validate:"required"`
 }
 
 func (balance *Balance) Validate() (err error) {

@@ -1,16 +1,19 @@
 package tradingConst
 
+type Currency string
+
 /* Forex currencies */
 
 const (
-	EuroCurrency     = "EUR"
-	USDollarCurrency = "USD"
+	Euro     Currency = "EUR"
+	USDollar Currency = "USD"
 )
 
 /* Crypto currencies */
 
 const (
-	BtcCurrency  = "BTC"
-	DashCurrency = "DASH"
-	EthCurrency  = "ETH"
+	Bitcoin  Currency = "BITCOIN"
+	Dash     Currency = "DASH"
+	Ethereum Currency = "ETHEREUM"
+	Cardano  Currency = "CARDANO"
 )

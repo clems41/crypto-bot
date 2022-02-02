@@ -14,10 +14,11 @@ import (
 func TestApi_GetIndexPrice(t *testing.T) {
 	apiTest, err := New()
 	require.NoError(t, err)
-	pair := tradingConst.BtcEurPair
+	pair := tradingConst.BitcoinEuro
+	fakePair := tradingConst.Pair(fake.Word())
 
 	// try with non-existing pair, should return error
-	prices, err := apiTest.GetIndexPrices(fake.Word())
+	prices, err := apiTest.GetIndexPrices(fakePair)
 	require.Error(t, err)
 
 	// try with existing pair, should be ok
@@ -61,15 +62,15 @@ func TestKrakenApi_convertOrderFromPlatformToProject(t *testing.T) {
 	require.NoError(t, err)
 	openTime := time.Now().AddDate(0, 0, -1)
 	closeTime := time.Now()
-	pair := tradingConst.EthEurPair
+	pair := tradingConst.EthereumEuro
 	closePrice := 5423.5
-	closeCondition := tradingConst.TakeProfitCloseConditionType
-	orderType := tradingConst.MarketOrderType
+	closeCondition := tradingConst.TakeProfit
+	orderType := tradingConst.Market
 	price := 5423.1
-	side := tradingConst.BuySideOrder
+	side := tradingConst.Buy
 	volume := 0.02548
 	fees := 0.26
-	status := tradingConst.CloseOrderStatus
+	status := tradingConst.Close
 	krakenOrder := krakenClient.Order{
 		TransactionID: uuid.New().String(),
 		Status:        statusConverter[status],
@@ -89,7 +90,7 @@ func TestKrakenApi_convertOrderFromPlatformToProject(t *testing.T) {
 
 	order, err := apiTest.convertOrderFromPlatformToProject(krakenOrder)
 	require.NoError(t, err)
-	require.Equal(t, krakenOrder.TransactionID, order.ID)
+	require.Empty(t, order.ID) // ID is fill from map[string]Order return by kraken package
 	require.Equal(t, openTime.Unix(), order.OpenTime.Unix())
 	require.Equal(t, closeTime.Unix(), order.CloseTime.Unix())
 	require.Equal(t, pair, order.Pair)

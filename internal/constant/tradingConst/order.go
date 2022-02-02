@@ -1,26 +1,26 @@
 package tradingConst
 
-const (
-	BuySideOrder  = "buy"
-	SellSideOrder = "sell"
-)
+type OrderSide string
 
 const (
-	MarketOrderType     = "market"
-	LimitOrderType      = "limit"
-	StopLossOrderType   = "stop-loss"
-	TakeProfitOrderType = "take-profit"
+	Buy  OrderSide = "buy"
+	Sell OrderSide = "sell"
 )
 
-const (
-	NoneCloseConditionType       = "none"
-	LimitCloseConditionType      = "limit"
-	StopLossCloseConditionType   = "stop-loss"
-	TakeProfitCloseConditionType = "take-profit"
-)
+type OrderType string
 
 const (
-	OpenOrderStatus   = "open"
-	CloseOrderStatus  = "close"
-	CancelOrderStatus = "cancel"
+	None       OrderType = "none"
+	Market     OrderType = "market"
+	Limit      OrderType = "limit"
+	StopLoss   OrderType = "stop-loss"
+	TakeProfit OrderType = "take-profit"
+)
+
+type OrderStatus string
+
+const (
+	Open   OrderStatus = "open"
+	Close  OrderStatus = "close"
+	Cancel OrderStatus = "cancel"
 )

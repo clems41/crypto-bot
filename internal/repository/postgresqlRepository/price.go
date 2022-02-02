@@ -1,6 +1,7 @@
 package postgresqlRepository
 
 import (
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"github.com/pkg/errors"
@@ -22,7 +23,7 @@ func (r *repo) StorePrice(priceModel *model.Price) (err error) {
 
 	priceRepo := price{
 		PlatformName: priceModel.PlatformName,
-		Pair:         priceModel.Pair,
+		Pair:         string(priceModel.Pair),
 		Ask:          priceModel.Ask,
 		Bid:          priceModel.Bid,
 	}
@@ -53,7 +54,7 @@ func (r *repo) GetPriceHistory(form repository.GetPriceHistoryForm) (prices []mo
 		priceModel := model.Price{
 			Date:         priceRepo.CreatedAt,
 			PlatformName: priceRepo.PlatformName,
-			Pair:         priceRepo.Pair,
+			Pair:         tradingConst.Pair(priceRepo.Pair),
 			Ask:          priceRepo.Ask,
 			Bid:          priceRepo.Bid,
 		}

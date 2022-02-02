@@ -76,7 +76,7 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	return
 }
 
-func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err error) {
+func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model.Price, err error) {
 	// get response form kraken api
 	var krakenPairs []string
 	for _, pair := range pairs {
@@ -99,7 +99,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 		pairTickerInfoInterface := value.Field(i).Interface()
 		pairTickerInfo, ok := pairTickerInfoInterface.(krakenClient.PairTickerInfo)
 		if ok && len(pairTickerInfo.Ask) > 0 && len(pairTickerInfo.Bid) > 0 {
-			var pair string
+			var pair tradingConst.Pair
 			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
 			if err != nil {
 				return nil, errors.WithStack(err)
@@ -184,8 +184,8 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 		balanceCurrencyInterface := value.Field(i).Interface()
 		balanceCurrency, ok := balanceCurrencyInterface.(float64)
 		if ok {
-			var currency string
-			currency, ok = currencyConverter[typeOfResponse.Field(i).Name]
+			var currency tradingConst.Currency
+			currency, ok = currencyConverterFromKrakenToProject[typeOfResponse.Field(i).Name]
 			if ok {
 				balance.ValueByCurrency[currency] = balanceCurrency
 			}
@@ -226,7 +226,7 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 	}
 
 	var price float64
-	if projectStatus == tradingConst.OpenOrderStatus {
+	if projectStatus == tradingConst.Open {
 		price, err = strconv.ParseFloat(krakenOrder.Description.PrimaryPrice, 64)
 		if err != nil {
 			return
@@ -236,15 +236,15 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 	}
 
 	// find close condition type
-	var closeOrderType string
-	if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.LimitCloseConditionType]) {
-		closeOrderType = tradingConst.LimitCloseConditionType
-	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.TakeProfitCloseConditionType]) {
-		closeOrderType = tradingConst.TakeProfitCloseConditionType
-	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.StopLossCloseConditionType]) {
-		closeOrderType = tradingConst.StopLossCloseConditionType
+	var closeOrderType tradingConst.OrderType
+	if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.Limit]) {
+		closeOrderType = tradingConst.Limit
+	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.TakeProfit]) {
+		closeOrderType = tradingConst.TakeProfit
+	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.StopLoss]) {
+		closeOrderType = tradingConst.StopLoss
 	} else {
-		closeOrderType = tradingConst.NoneCloseConditionType
+		closeOrderType = tradingConst.None
 	}
 
 	// find close condition price

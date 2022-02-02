@@ -10,16 +10,18 @@ const (
 )
 
 var (
-	initialPairsToTradeByPlatform = map[string][]string{
+	initialPairsToTradeByPlatform = map[string][]tradingConst.Pair{
 		tradingConst.KrakenMockPlatform: {
-			tradingConst.BtcEurPair,
-			tradingConst.EthEurPair,
-			tradingConst.DashEurPair,
+			tradingConst.BitcoinEuro,
+			tradingConst.EthereumBitcoin,
+			tradingConst.DashEuro,
+			tradingConst.CardanoEuro,
 		},
 		tradingConst.KrakenPlatform: {
-			tradingConst.BtcEurPair,
-			tradingConst.EthEurPair,
-			tradingConst.DashEurPair,
+			tradingConst.BitcoinEuro,
+			tradingConst.EthereumBitcoin,
+			tradingConst.DashEuro,
+			tradingConst.CardanoEuro,
 		},
 	}
 )

@@ -20,7 +20,7 @@ var _ tradingPlatform.Api = (*krakenApi)(nil)
 
 type krakenApi struct {
 	client                *krakenClient.KrakenAPI
-	balanceByCurrencyMock map[string]float64
+	balanceByCurrencyMock map[tradingConst.Currency]float64
 	orders                []*model.Order
 }
 
@@ -81,7 +81,7 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	fees := order.Amount * takerFees / 100
 	order.ID = uuid.New().String()
 	order.Fees = fees
-	order.Status = tradingConst.OpenOrderStatus
+	order.Status = tradingConst.Open
 	order.OpenTime = time.Now()
 
 	// add orders in memory
@@ -89,7 +89,7 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	return
 }
 
-func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err error) {
+func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model.Price, err error) {
 	if len(pairs) == 0 {
 		return
 	}
@@ -115,7 +115,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 		pairTickerInfoInterface := value.Field(i).Interface()
 		pairTickerInfo, ok := pairTickerInfoInterface.(krakenClient.PairTickerInfo)
 		if ok && len(pairTickerInfo.Ask) > 0 && len(pairTickerInfo.Bid) > 0 {
-			var pair string
+			var pair tradingConst.Pair
 			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
 			if err != nil {
 				return nil, errors.WithStack(err)
@@ -149,7 +149,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...string) (prices []model.Price, err
 
 func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 	for _, order := range api.orders {
-		if order.Status == tradingConst.OpenOrderStatus {
+		if order.Status == tradingConst.Open {
 			if order != nil {
 				orders = append(orders, *order)
 			}
@@ -181,17 +181,17 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 // Open new order if close condition is defined.
 func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error) {
 	// map prices by pair
-	indexPricesByPair := make(map[string]model.Price)
+	indexPricesByPair := make(map[tradingConst.Pair]model.Price)
 	for _, price := range prices {
 		indexPricesByPair[price.Pair] = price
 	}
 
 	// update open orders and create new one if conditions are reached
 	for orderIdx, order := range api.orders {
-		if order.Status == tradingConst.OpenOrderStatus {
+		if order.Status == tradingConst.Open {
 			// find if order should be closed
 			var shouldClose bool
-			if order.Side == tradingConst.BuySideOrder {
+			if order.Side == tradingConst.Buy {
 				if order.Price >= indexPricesByPair[order.Pair].Ask {
 					shouldClose = true
 				}
@@ -210,14 +210,14 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 				api.orders[orderIdx] = order
 
 				// if order close condition are specified, create new order based on it
-				if order.CloseConditionType != "" && order.CloseConditionType != tradingConst.NoneCloseConditionType {
-					if order.CloseConditionType == tradingConst.TakeProfitCloseConditionType ||
-						order.CloseConditionType == tradingConst.LimitCloseConditionType {
-						var closeOrderSide string
-						if order.Side == tradingConst.BuySideOrder {
-							closeOrderSide = tradingConst.SellSideOrder
+				if order.CloseConditionType != "" && order.CloseConditionType != tradingConst.None {
+					if order.CloseConditionType == tradingConst.TakeProfit ||
+						order.CloseConditionType == tradingConst.Limit {
+						var closeOrderSide tradingConst.OrderSide
+						if order.Side == tradingConst.Buy {
+							closeOrderSide = tradingConst.Sell
 						} else {
-							closeOrderSide = tradingConst.BuySideOrder
+							closeOrderSide = tradingConst.Buy
 						}
 						newOrder := model.Order{
 							ID:                 uuid.New().String(),
@@ -227,9 +227,9 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 							Type:               order.CloseConditionType,
 							Price:              order.CloseConditionPrice,
 							PlatformName:       api.Name(),
-							CloseConditionType: tradingConst.NoneCloseConditionType,
+							CloseConditionType: tradingConst.None,
 						}
-						if order.Side == tradingConst.BuySideOrder {
+						if order.Side == tradingConst.Buy {
 							newOrder.Volume = order.Volume
 							newOrder.Amount = newOrder.Price * newOrder.Volume
 						} else {
@@ -249,9 +249,9 @@ func (api *krakenApi) updateOrdersBasedOnPrice(prices []model.Price) (err error)
 }
 
 func (api *krakenApi) closeOrder(order *model.Order) (err error) {
-	order.Status = tradingConst.CloseOrderStatus
+	order.Status = tradingConst.Close
 	order.CloseTime = time.Now()
-	var currencyNeeded, currencyGot string
+	var currencyNeeded, currencyGot tradingConst.Currency
 	var ok bool
 	currencyNeeded, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, order.Side)
 	if !ok {
@@ -261,7 +261,7 @@ func (api *krakenApi) closeOrder(order *model.Order) (err error) {
 	if !ok {
 		return fmt.Errorf("cannot find currency got for pair %s ans side %s", order.Pair, order.Side)
 	}
-	if order.Side == tradingConst.BuySideOrder {
+	if order.Side == tradingConst.Buy {
 		order.Volume *= 1 - takerFees/100
 		api.balanceByCurrencyMock[currencyNeeded] -= order.Amount
 		api.balanceByCurrencyMock[currencyGot] += order.Volume

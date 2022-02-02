@@ -1,6 +1,7 @@
 package postgresqlRepository
 
 import (
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
 	"github.com/pkg/errors"
@@ -52,17 +53,17 @@ func (r *repo) StoreOrder(orderModel *model.Order) (err error) {
 
 	// fill orderModel fields
 	orderRepo.PlatformOrderID = orderModel.ID
-	orderRepo.Pair = orderModel.Pair
-	orderRepo.Side = orderModel.Side
+	orderRepo.Pair = string(orderModel.Pair)
+	orderRepo.Side = string(orderModel.Side)
 	orderRepo.Volume = orderModel.Volume
-	orderRepo.Type = orderModel.Type
+	orderRepo.Type = string(orderModel.Type)
 	orderRepo.Price = orderModel.Price
 	orderRepo.Amount = orderModel.Amount
 	orderRepo.Leverage = orderModel.Leverage
-	orderRepo.CloseConditionType = orderModel.CloseConditionType
+	orderRepo.CloseConditionType = string(orderModel.CloseConditionType)
 	orderRepo.CloseConditionPrice = orderModel.CloseConditionPrice
 	orderRepo.Fees = orderModel.Fees
-	orderRepo.Status = orderModel.Status
+	orderRepo.Status = string(orderModel.Status)
 	orderRepo.PlatformName = orderModel.PlatformName
 	orderRepo.ExecutionID = r.executionID
 	orderRepo.OpenTime = orderModel.OpenTime
@@ -115,17 +116,17 @@ func (r *repo) GetOrderHistory(form repository.GetOrderHistoryForm) (orders []mo
 			ID:                  orderRepo.PlatformOrderID,
 			OpenTime:            orderRepo.OpenTime,
 			CloseTime:           orderRepo.CloseTime,
-			Pair:                orderRepo.Pair,
-			Side:                orderRepo.Side,
+			Pair:                tradingConst.Pair(orderRepo.Pair),
+			Side:                tradingConst.OrderSide(orderRepo.Side),
 			Volume:              orderRepo.Volume,
-			Type:                orderRepo.Type,
+			Type:                tradingConst.OrderType(orderRepo.Type),
 			Price:               orderRepo.Price,
 			Amount:              orderRepo.Amount,
 			Leverage:            orderRepo.Leverage,
-			CloseConditionType:  orderRepo.CloseConditionType,
+			CloseConditionType:  tradingConst.OrderType(orderRepo.CloseConditionType),
 			CloseConditionPrice: orderRepo.CloseConditionPrice,
 			Fees:                orderRepo.Fees,
-			Status:              orderRepo.Status,
+			Status:              tradingConst.OrderStatus(orderRepo.Status),
 			PlatformName:        orderRepo.PlatformName,
 		})
 	}

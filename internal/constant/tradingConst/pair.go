@@ -1,20 +1,23 @@
 package tradingConst
 
+type Pair string
+
 /* Pairs using EURO */
 const (
-	BtcEurPair  = "BTC_EUR"
-	DashEurPair = "DASH_EUR"
-	EthEurPair  = "ETH_EUR"
+	BitcoinEuro  Pair = "BTC_EUR"
+	DashEuro     Pair = "DASH_EUR"
+	EthereumEuro Pair = "ETH_EUR"
+	CardanoEuro  Pair = "ADA_EUR"
 )
 
 /* Pairs using only crypto */
 
 const (
-	EthBtcPair = "ETH_BTC"
+	EthereumBitcoin Pair = "ETH_BTC"
 )
 
 /* Pairs using USD */
 
 const (
-	BtcUsdPair = "BTC_USD"
+	BitcoinUSDollar Pair = "BTC_USD"
 )

@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	initialBalance = map[string]float64{
-		tradingConst.EuroCurrency: 100,
+	initialBalance = map[tradingConst.Currency]float64{
+		tradingConst.Euro: 100,
 	}
 )
