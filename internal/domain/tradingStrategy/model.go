@@ -13,5 +13,5 @@ type ShouldAddOrderForm struct {
 	PairToTrade    tradingConst.Pair
 	CurrentBalance map[tradingConst.Currency]float64
 	OpenOrders     []model.Order
-	AllPairsTraded []tradingConst.Pair
+	PlatformName   string
 }

@@ -1,9 +1,11 @@
 package minOrMaxAlgo
 
 import (
+	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/envUtils"
 	"strconv"
+	"time"
 )
 
 const (
@@ -12,14 +14,33 @@ const (
 	envMinimumResultInPercentBeforeCloseOrder = "MIN_RESULT"
 	envMaxOpenedOrdersByPair                  = "MAX_ORDER_PAIR"
 	envMinimumAmount                          = "MIN_AMOUNT"
+	envDelayBetweenEachRunInSeconds           = "DELAY_RUN_SEC"
 )
 
 const (
-	defaultNumberOfPreviousPricesToCompare        = "180" // 180 * 10s --> 30min
-	defaultPercentPriceBelowToBuy                 = "0.05"
+	defaultNumberOfPreviousPricesToCompare        = "1" // 180 * 10s --> 30min
+	defaultPercentPriceBelowToBuy                 = "0.00"
 	defaultMinimumResultInPercentBeforeCloseOrder = "0.7"
 	defaultMaxOpenedOrdersByPair                  = "1"
 	defaultMinimumAmount                          = "10"
+	defaultDelayBetweenEachRunInSeconds           = "10"
+)
+
+var (
+	initialPairsToTradeByPlatform = map[string][]tradingConst.Pair{
+		tradingConst.KrakenMockPlatform: {
+			tradingConst.BitcoinEuro,
+			tradingConst.EthereumBitcoin,
+			tradingConst.DashEuro,
+			tradingConst.CardanoEuro,
+		},
+		tradingConst.KrakenPlatform: {
+			tradingConst.BitcoinEuro,
+			tradingConst.EthereumBitcoin,
+			tradingConst.DashEuro,
+			tradingConst.CardanoEuro,
+		},
+	}
 )
 
 type Config struct {
@@ -34,6 +55,10 @@ type Config struct {
 	MaxOpenedOrdersByPair int
 	// MinimumAmount defines minimal amount to open order
 	MinimumAmount float64
+	// DelayBetweenEachRun defines duration to wait between each algorithm run
+	DelayBetweenEachRun time.Duration
+	// InitialPairsToTradeByPlatform defines all pairs that should be trade by platform
+	InitialPairsToTradeByPlatform map[string][]tradingConst.Pair
 }
 
 func GetConfigFromEnvOrDefault() (config *Config, err error) {
@@ -62,12 +87,19 @@ func GetConfigFromEnvOrDefault() (config *Config, err error) {
 	if err != nil {
 		return
 	}
+	delayBetweenEachRunInSecondsStr := envUtils.GetFromEnvOrDefault(envDelayBetweenEachRunInSeconds, defaultDelayBetweenEachRunInSeconds)
+	delayBetweenEachRunInSeconds, err := strconv.Atoi(delayBetweenEachRunInSecondsStr)
+	if err != nil {
+		return
+	}
 	config = &Config{
 		NumberOfPreviousPricesToCompare:       numberOfPreviousPricesToCompare,
 		PercentPriceBelowToBuy:                percentPriceBelowToBuy,
 		MinimumResultInPercentToClosePosition: minimumResultInPercentBeforeCloseOrder,
 		MaxOpenedOrdersByPair:                 maxOpenedOrdersByPair,
 		MinimumAmount:                         minimumAmount,
+		InitialPairsToTradeByPlatform:         initialPairsToTradeByPlatform,
+		DelayBetweenEachRun:                   time.Duration(delayBetweenEachRunInSeconds) * time.Second,
 	}
 	logger.Infof("Following config will be used for trading algo : %+v", config)
 	return

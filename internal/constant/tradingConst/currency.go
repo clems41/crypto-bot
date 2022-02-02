@@ -5,7 +5,7 @@ type Currency string
 /* Forex currencies */
 
 const (
-	Euro     Currency = "EUR"
+	Euro     Currency = "EURO"
 	USDollar Currency = "USD"
 )
 

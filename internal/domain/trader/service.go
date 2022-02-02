@@ -90,7 +90,7 @@ func (svc *service) Start() (err error) {
 	}
 
 	// Run algorithm each X ms
-	for range time.Tick(delayBetweenEachRun) { // Loop
+	for range time.Tick(svc.algo.DelayBetweenEachRun()) { // Loop
 		select {
 		case <-svc.quitChannel:
 			logger.Debugf("Stop message has been received")
@@ -151,7 +151,11 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 		}
 
 		// update prices for all pairs and platforms
-		err = svc.updateIndexPrice(platform, initialPairsToTradeByPlatform[platformName])
+		pairs, ok := svc.algo.PairsToTradeByPlatform()[platformName]
+		if !ok {
+			return fmt.Errorf("cannot find pairs to trade for platform %s", platformName)
+		}
+		err = svc.updateIndexPrice(platform, pairs)
 		if err != nil {
 			return
 		}
@@ -176,7 +180,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			priceForm := repository.GetPriceHistoryForm{
 				PlatformName: platformName,
 				Pair:         pair,
-				SinceTime:    time.Now().Add(-time.Duration(svc.algo.PricesNeeded()) * delayBetweenEachRun),
+				SinceTime:    time.Now().Add(-time.Duration(svc.algo.PricesNeeded()) * svc.algo.DelayBetweenEachRun()),
 			}
 			prices, err = svc.repo.GetPriceHistory(priceForm)
 			if err != nil {
@@ -214,7 +218,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				PairToTrade:    pair,
 				CurrentBalance: svc.balanceByPlatform[platformName].ValueByCurrency,
 				OpenOrders:     openOrders,
-				AllPairsTraded: initialPairsToTradeByPlatform[platformName],
+				PlatformName:   platformName,
 			}
 			var order model.Order
 			var shouldOpenOrder bool
@@ -282,7 +286,11 @@ func (svc *service) getTradeInfo(platform tradingPlatform.Api) (info TradeInfo, 
 	}
 
 	// remove from pairsToTrade all pair that has been reached maxOpenedOrderByPair
-	for _, pair := range initialPairsToTradeByPlatform[platform.Name()] {
+	initialPairs, ok := svc.algo.PairsToTradeByPlatform()[platform.Name()]
+	if !ok {
+		return info, fmt.Errorf("cannot find pairs to trade for platform %s", platform.Name())
+	}
+	for _, pair := range initialPairs {
 		if len(openedOrdersByPlatform[pair]) < svc.algo.MaxOpenedOrdersByPair() {
 			info.PairsToTrade = append(info.PairsToTrade, pair)
 		}

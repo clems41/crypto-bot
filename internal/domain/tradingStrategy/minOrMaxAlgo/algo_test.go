@@ -4,26 +4,31 @@ import (
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
+	"github.com/icrowley/fake"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_SellOrderOpen(t *testing.T) {
 	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
+	pair3 := tradingConst.EthereumBitcoin
 	config := Config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
 		MaxOpenedOrdersByPair:                 1,
 		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2, pair3},
+		},
 	}
 	algo, err := New(&config)
 	require.NoError(t, err)
 
 	// get order to open
-	pair1 := tradingConst.BitcoinEuro
-	pair2 := tradingConst.EthereumEuro
-	pair3 := tradingConst.EthereumBitcoin
 	askPrice := 5432.2
 	form := tradingStrategy.ShouldAddOrderForm{
 		PriceHistory: []model.Price{
@@ -52,7 +57,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_SellOrderOpen(t *testing.T) {
 				Status: tradingConst.Open,
 			},
 		},
-		AllPairsTraded: []tradingConst.Pair{pair1, pair2, pair3},
+		PlatformName: platformName,
 	}
 	ok, order, err := algo.ShouldAddOrder(form)
 	require.NoError(t, err)
@@ -64,20 +69,24 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_SellOrderOpen(t *testing.T) {
 
 func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_BuyOrderOpen(t *testing.T) {
 	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
+	pair3 := tradingConst.EthereumBitcoin
 	config := Config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
 		MaxOpenedOrdersByPair:                 1,
 		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2, pair3},
+		},
 	}
 	algo, err := New(&config)
 	require.NoError(t, err)
 
 	// get order to open
-	pair1 := tradingConst.BitcoinEuro
-	pair2 := tradingConst.EthereumEuro
-	pair3 := tradingConst.EthereumBitcoin
 	askPrice := 5432.2
 	form := tradingStrategy.ShouldAddOrderForm{
 		PriceHistory: []model.Price{
@@ -101,7 +110,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_BuyOrderOpen(t *testing.T) {
 				Status: tradingConst.Open,
 			},
 		},
-		AllPairsTraded: []tradingConst.Pair{pair1, pair2, pair3},
+		PlatformName: platformName,
 	}
 	ok, order, err := algo.ShouldAddOrder(form)
 	require.NoError(t, err)
@@ -113,19 +122,23 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_BuyOrderOpen(t *testing.T) {
 
 func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumBuyOrder(t *testing.T) {
 	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
 	config := Config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
 		MaxOpenedOrdersByPair:                 1,
 		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2},
+		},
 	}
 	algo, err := New(&config)
 	require.NoError(t, err)
 
 	// get order to open
-	pair1 := tradingConst.BitcoinEuro
-	pair2 := tradingConst.EthereumEuro
 	askPrice := 5432.2
 	form := tradingStrategy.ShouldAddOrderForm{
 		PriceHistory: []model.Price{
@@ -154,7 +167,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumBuyOrder(t *testing.T) {
 				Status: tradingConst.Open,
 			},
 		},
-		AllPairsTraded: []tradingConst.Pair{pair1, pair2},
+		PlatformName: platformName,
 	}
 	ok, order, err := algo.ShouldAddOrder(form)
 	require.NoError(t, err)
@@ -166,19 +179,23 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumBuyOrder(t *testing.T) {
 
 func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumSellOrder(t *testing.T) {
 	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
 	config := Config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
 		MaxOpenedOrdersByPair:                 1,
 		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2},
+		},
 	}
 	algo, err := New(&config)
 	require.NoError(t, err)
 
 	// get order to open
-	pair1 := tradingConst.BitcoinEuro
-	pair2 := tradingConst.EthereumEuro
 	askPrice := 5432.2
 	form := tradingStrategy.ShouldAddOrderForm{
 		PriceHistory: []model.Price{
@@ -207,7 +224,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumSellOrder(t *testing.T) 
 				Status: tradingConst.Open,
 			},
 		},
-		AllPairsTraded: []tradingConst.Pair{pair1, pair2},
+		PlatformName: platformName,
 	}
 	ok, order, err := algo.ShouldAddOrder(form)
 	require.NoError(t, err)
@@ -219,20 +236,24 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumSellOrder(t *testing.T) 
 
 func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_NotEnoughInBalance(t *testing.T) {
 	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
+	pair3 := tradingConst.EthereumBitcoin
 	config := Config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
 		MaxOpenedOrdersByPair:                 1,
 		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2, pair3},
+		},
 	}
 	algo, err := New(&config)
 	require.NoError(t, err)
 
 	// get order to open
-	pair1 := tradingConst.BitcoinEuro
-	pair2 := tradingConst.EthereumEuro
-	pair3 := tradingConst.EthereumBitcoin
 	askPrice := 5432.2
 	form := tradingStrategy.ShouldAddOrderForm{
 		PriceHistory: []model.Price{
@@ -256,7 +277,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_NotEnoughInBalance(t *testing.T
 				Status: tradingConst.Open,
 			},
 		},
-		AllPairsTraded: []tradingConst.Pair{pair1, pair2, pair3},
+		PlatformName: platformName,
 	}
 	ok, order, err := algo.ShouldAddOrder(form)
 	require.NoError(t, err)
@@ -268,19 +289,23 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_NotEnoughInBalance(t *testing.T
 
 func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_ZeroPreviousOrder(t *testing.T) {
 	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
 	config := Config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
 		MaxOpenedOrdersByPair:                 1,
 		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2},
+		},
 	}
 	algo, err := New(&config)
 	require.NoError(t, err)
 
 	// get order to open
-	pair1 := tradingConst.BitcoinEuro
-	pair2 := tradingConst.EthereumEuro
 	askPrice := 5432.2
 	form := tradingStrategy.ShouldAddOrderForm{
 		PriceHistory: []model.Price{
@@ -297,8 +322,8 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_ZeroPreviousOrder(t *testing.T)
 		CurrentBalance: map[tradingConst.Currency]float64{
 			tradingConst.Euro: 100,
 		},
-		OpenOrders:     nil,
-		AllPairsTraded: []tradingConst.Pair{pair1, pair2},
+		OpenOrders:   nil,
+		PlatformName: platformName,
 	}
 	ok, order, err := algo.ShouldAddOrder(form)
 	require.NoError(t, err)

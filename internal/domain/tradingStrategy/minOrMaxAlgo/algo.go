@@ -7,6 +7,7 @@ import (
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
 	"github.com/pkg/errors"
+	"time"
 )
 
 var _ tradingStrategy.Algo = (*algorithm)(nil)
@@ -117,7 +118,11 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 
 	// count all pair that are using this currency
 	var nbPairUsingCurrency int
-	for _, pair := range form.AllPairsTraded {
+	allPairsTraded, ok := algo.config.InitialPairsToTradeByPlatform[form.PlatformName]
+	if !ok {
+		return amount, fmt.Errorf("cannot find pairs from platform %s", form.PlatformName)
+	}
+	for _, pair := range allPairsTraded {
 		var currency tradingConst.Currency
 		currency, ok = tradingUtils.CurrencyNeededToTradePair(pair, tradingConst.Buy)
 		if !ok {
@@ -157,4 +162,12 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	return
+}
+
+func (algo *algorithm) DelayBetweenEachRun() (delay time.Duration) {
+	return algo.config.DelayBetweenEachRun
+}
+
+func (algo *algorithm) PairsToTradeByPlatform() (pairsByPlatform map[string][]tradingConst.Pair) {
+	return algo.config.InitialPairsToTradeByPlatform
 }

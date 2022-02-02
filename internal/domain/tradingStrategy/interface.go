@@ -1,6 +1,10 @@
 package tradingStrategy
 
-import "crypto-bot/internal/model"
+import (
+	"crypto-bot/internal/constant/tradingConst"
+	"crypto-bot/internal/model"
+	"time"
+)
 
 type Algo interface {
 	// ShouldAddOrder determines if order should be open. If returned order is nil, order should not be open
@@ -10,4 +14,8 @@ type Algo interface {
 	PricesNeeded() (numberOfPrices int)
 	// MaxOpenedOrdersByPair return limit of opened order by pair
 	MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int)
+	// DelayBetweenEachRun return duration to wait between each algorithm execution
+	DelayBetweenEachRun() (delay time.Duration)
+	// PairsToTradeByPlatform return pairs that should be trades depending on platform
+	PairsToTradeByPlatform() (pairsByPlatform map[string][]tradingConst.Pair)
 }
