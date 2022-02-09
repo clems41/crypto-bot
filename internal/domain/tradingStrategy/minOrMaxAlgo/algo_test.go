@@ -15,7 +15,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_SellOrderOpen(t *testing.T) {
 	pair1 := tradingConst.BitcoinEuro
 	pair2 := tradingConst.EthereumEuro
 	pair3 := tradingConst.EthereumBitcoin
-	config := Config{
+	cfg := config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
@@ -25,7 +25,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_SellOrderOpen(t *testing.T) {
 			platformName: {pair1, pair2, pair3},
 		},
 	}
-	algo, err := New(&config)
+	algo, err := New(&cfg)
 	require.NoError(t, err)
 
 	// get order to open
@@ -73,7 +73,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_BuyOrderOpen(t *testing.T) {
 	pair1 := tradingConst.BitcoinEuro
 	pair2 := tradingConst.EthereumEuro
 	pair3 := tradingConst.EthereumBitcoin
-	config := Config{
+	cfg := config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
@@ -83,7 +83,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_BuyOrderOpen(t *testing.T) {
 			platformName: {pair1, pair2, pair3},
 		},
 	}
-	algo, err := New(&config)
+	algo, err := New(&cfg)
 	require.NoError(t, err)
 
 	// get order to open
@@ -125,7 +125,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumBuyOrder(t *testing.T) {
 	platformName := fake.Sentences()
 	pair1 := tradingConst.BitcoinEuro
 	pair2 := tradingConst.EthereumEuro
-	config := Config{
+	cfg := config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
@@ -135,7 +135,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumBuyOrder(t *testing.T) {
 			platformName: {pair1, pair2},
 		},
 	}
-	algo, err := New(&config)
+	algo, err := New(&cfg)
 	require.NoError(t, err)
 
 	// get order to open
@@ -182,7 +182,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumSellOrder(t *testing.T) 
 	platformName := fake.Sentences()
 	pair1 := tradingConst.BitcoinEuro
 	pair2 := tradingConst.EthereumEuro
-	config := Config{
+	cfg := config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
@@ -192,7 +192,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_MaximumSellOrder(t *testing.T) 
 			platformName: {pair1, pair2},
 		},
 	}
-	algo, err := New(&config)
+	algo, err := New(&cfg)
 	require.NoError(t, err)
 
 	// get order to open
@@ -240,7 +240,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_NotEnoughInBalance(t *testing.T
 	pair1 := tradingConst.BitcoinEuro
 	pair2 := tradingConst.EthereumEuro
 	pair3 := tradingConst.EthereumBitcoin
-	config := Config{
+	cfg := config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
@@ -250,7 +250,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_NotEnoughInBalance(t *testing.T
 			platformName: {pair1, pair2, pair3},
 		},
 	}
-	algo, err := New(&config)
+	algo, err := New(&cfg)
 	require.NoError(t, err)
 
 	// get order to open
@@ -292,7 +292,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_ZeroPreviousOrder(t *testing.T)
 	platformName := fake.Sentences()
 	pair1 := tradingConst.BitcoinEuro
 	pair2 := tradingConst.EthereumEuro
-	config := Config{
+	cfg := config{
 		NumberOfPreviousPricesToCompare:       1,
 		PercentPriceBelowToBuy:                0,
 		MinimumResultInPercentToClosePosition: 0.5,
@@ -302,7 +302,7 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_ZeroPreviousOrder(t *testing.T)
 			platformName: {pair1, pair2},
 		},
 	}
-	algo, err := New(&config)
+	algo, err := New(&cfg)
 	require.NoError(t, err)
 
 	// get order to open

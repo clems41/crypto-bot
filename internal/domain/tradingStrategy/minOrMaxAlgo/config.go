@@ -43,7 +43,7 @@ var (
 	}
 )
 
-type Config struct {
+type config struct {
 	// NumberOfPreviousPricesToCompare defines number of previous prices to use with opening position algorithm
 	NumberOfPreviousPricesToCompare int
 	// PercentPriceBelowToBuy defines percent of price decrease needed to trigger order.
@@ -61,7 +61,7 @@ type Config struct {
 	InitialPairsToTradeByPlatform map[string][]tradingConst.Pair
 }
 
-func GetConfigFromEnvOrDefault() (config *Config, err error) {
+func GetConfigFromEnvOrDefault() (cfg *config, err error) {
 	maxOpenedOrdersByPairStr := envUtils.GetFromEnvOrDefault(envMaxOpenedOrdersByPair, defaultMaxOpenedOrdersByPair)
 	maxOpenedOrdersByPair, err := strconv.Atoi(maxOpenedOrdersByPairStr)
 	if err != nil {
@@ -92,7 +92,7 @@ func GetConfigFromEnvOrDefault() (config *Config, err error) {
 	if err != nil {
 		return
 	}
-	config = &Config{
+	cfg = &config{
 		NumberOfPreviousPricesToCompare:       numberOfPreviousPricesToCompare,
 		PercentPriceBelowToBuy:                percentPriceBelowToBuy,
 		MinimumResultInPercentToClosePosition: minimumResultInPercentBeforeCloseOrder,
@@ -101,6 +101,6 @@ func GetConfigFromEnvOrDefault() (config *Config, err error) {
 		InitialPairsToTradeByPlatform:         initialPairsToTradeByPlatform,
 		DelayBetweenEachRun:                   time.Duration(delayBetweenEachRunInSeconds) * time.Second,
 	}
-	logger.Infof("Following config will be used for trading algo : %+v", config)
+	logger.Infof("Following config will be used for trading algo : %+v", cfg)
 	return
 }

@@ -13,23 +13,23 @@ import (
 var _ tradingStrategy.Algo = (*algorithm)(nil)
 
 type algorithm struct {
-	config *Config
+	cfg *config
 }
 
 // New instantiate new algorithm service. You can specify config parameters using config argument or environment variables.
-func New(customConfig *Config) (algo *algorithm, err error) {
-	var config *Config
+func New(customConfig *config) (algo *algorithm, err error) {
+	var cfg *config
 	if customConfig != nil {
-		config = customConfig
+		cfg = customConfig
 	} else {
-		config, err = GetConfigFromEnvOrDefault()
+		cfg, err = GetConfigFromEnvOrDefault()
 		if err != nil {
 			return
 		}
 	}
 
 	algo = &algorithm{
-		config: config,
+		cfg: cfg,
 	}
 	return
 }
@@ -42,7 +42,7 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	// do calculation only on last NumberOfPreviousPricesToCompare prices
-	pricesHistory := form.PriceHistory[len(form.PriceHistory)-algo.config.NumberOfPreviousPricesToCompare:]
+	pricesHistory := form.PriceHistory[len(form.PriceHistory)-algo.cfg.NumberOfPreviousPricesToCompare:]
 
 	// find min and max from price history
 	minimumAsk := pricesHistory[0].Ask
@@ -64,16 +64,16 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 		if err != nil {
 			return false, order, errors.WithStack(err)
 		}
-		if amount < algo.config.MinimumAmount {
+		if amount < algo.cfg.MinimumAmount {
 			return
 		}
-		price := form.IndexPrice.Ask * (1 - algo.config.PercentPriceBelowToBuy/100)
+		price := form.IndexPrice.Ask * (1 - algo.cfg.PercentPriceBelowToBuy/100)
 		price, err = tradingUtils.RemovePriceDecimal(price, form.PairToTrade)
 		if err != nil {
 			return false, order, errors.WithStack(err)
 		}
 		volume := amount / price
-		closeConditionPrice := price * (1 + algo.config.MinimumResultInPercentToClosePosition/100)
+		closeConditionPrice := price * (1 + algo.cfg.MinimumResultInPercentToClosePosition/100)
 		closeConditionPrice, err = tradingUtils.RemovePriceDecimal(closeConditionPrice, form.PairToTrade)
 		if err != nil {
 			return false, order, errors.WithStack(err)
@@ -95,11 +95,11 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 }
 
 func (algo *algorithm) PricesNeeded() (numberOfPrices int) {
-	return algo.config.NumberOfPreviousPricesToCompare
+	return algo.cfg.NumberOfPreviousPricesToCompare
 }
 
 func (algo *algorithm) MaxOpenedOrdersByPair() (maxOpenedOrdersByPair int) {
-	return algo.config.MaxOpenedOrdersByPair
+	return algo.cfg.MaxOpenedOrdersByPair
 }
 
 func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (amount float64, err error) {
@@ -118,7 +118,7 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 
 	// count all pair that are using this currency
 	var nbPairUsingCurrency int
-	allPairsTraded, ok := algo.config.InitialPairsToTradeByPlatform[form.PlatformName]
+	allPairsTraded, ok := algo.cfg.InitialPairsToTradeByPlatform[form.PlatformName]
 	if !ok {
 		return amount, fmt.Errorf("cannot find pairs from platform %s", form.PlatformName)
 	}
@@ -165,9 +165,9 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 }
 
 func (algo *algorithm) DelayBetweenEachRun() (delay time.Duration) {
-	return algo.config.DelayBetweenEachRun
+	return algo.cfg.DelayBetweenEachRun
 }
 
 func (algo *algorithm) PairsToTradeByPlatform() (pairsByPlatform map[string][]tradingConst.Pair) {
-	return algo.config.InitialPairsToTradeByPlatform
+	return algo.cfg.InitialPairsToTradeByPlatform
 }
