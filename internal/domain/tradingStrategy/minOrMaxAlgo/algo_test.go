@@ -4,6 +4,7 @@ import (
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
+	"fmt"
 	"github.com/icrowley/fake"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -331,4 +332,53 @@ func TestAlgorithm_ShouldAddOrder_GetAmountToBuy_ZeroPreviousOrder(t *testing.T)
 
 	// check order amount
 	require.Equal(t, 50.0, order.Amount)
+}
+
+func TestAlgorithm_ShouldAddOrder_ClosePriceCalculation(t *testing.T) {
+	// instantiate algo
+	platformName := fake.Sentences()
+	pair1 := tradingConst.BitcoinEuro
+	pair2 := tradingConst.EthereumEuro
+	cfg := config{
+		NumberOfPreviousPricesToCompare:       1,
+		PercentPriceBelowToBuy:                0,
+		MinimumResultInPercentToClosePosition: 0.5,
+		MaxOpenedOrdersByPair:                 1,
+		MinimumAmount:                         10,
+		InitialPairsToTradeByPlatform: map[string][]tradingConst.Pair{
+			platformName: {pair1, pair2},
+		},
+	}
+	algo, err := New(&cfg)
+	require.NoError(t, err)
+
+	// get order to open
+	askPrice := 5432.2
+	form := tradingStrategy.ShouldAddOrderForm{
+		PriceHistory: []model.Price{
+			{
+				Pair: pair2,
+				Ask:  askPrice,
+			},
+		},
+		IndexPrice: model.Price{
+			Pair: pair2,
+			Ask:  askPrice - 100,
+		},
+		PairToTrade: pair2,
+		CurrentBalance: map[tradingConst.Currency]float64{
+			tradingConst.Euro: 100,
+		},
+		OpenOrders:         nil,
+		PlatformName:       platformName,
+		TakerFeesInPercent: 0.2,
+		MakerFeesInPercent: 0.5,
+	}
+	ok, order, err := algo.ShouldAddOrder(form)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// check order amount
+	expectedClosePrice := form.IndexPrice.Ask * (1 + form.MakerFeesInPercent/100) * (1 + form.MakerFeesInPercent/100) * (1 + cfg.MinimumResultInPercentToClosePosition/100)
+	require.Equal(t, fmt.Sprintf("%0.1f", expectedClosePrice), fmt.Sprintf("%0.1f", order.CloseConditionPrice))
 }

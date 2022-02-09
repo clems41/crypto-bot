@@ -7,6 +7,7 @@ import (
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
 	"github.com/pkg/errors"
+	"math"
 	"time"
 )
 
@@ -73,7 +74,7 @@ func (algo *algorithm) ShouldAddOrder(form tradingStrategy.ShouldAddOrderForm) (
 			return false, order, errors.WithStack(err)
 		}
 		volume := amount / price
-		closeConditionPrice := price * (1 + algo.cfg.MinimumResultInPercentToClosePosition/100)
+		closeConditionPrice := price * (1 + algo.cfg.MinimumResultInPercentToClosePosition/100) * math.Pow(1+form.MakerFeesInPercent/100, 2)
 		closeConditionPrice, err = tradingUtils.RemovePriceDecimal(closeConditionPrice, form.PairToTrade)
 		if err != nil {
 			return false, order, errors.WithStack(err)

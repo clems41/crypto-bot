@@ -213,12 +213,14 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
 			openForm := tradingStrategy.ShouldAddOrderForm{
-				PriceHistory:   prices,
-				IndexPrice:     indexPrice,
-				PairToTrade:    pair,
-				CurrentBalance: svc.balanceByPlatform[platformName].ValueByCurrency,
-				OpenOrders:     openOrders,
-				PlatformName:   platformName,
+				PriceHistory:       prices,
+				IndexPrice:         indexPrice,
+				PairToTrade:        pair,
+				CurrentBalance:     svc.balanceByPlatform[platformName].ValueByCurrency,
+				OpenOrders:         openOrders,
+				PlatformName:       platformName,
+				TakerFeesInPercent: platform.TakerFeesInPercent(),
+				MakerFeesInPercent: platform.MakerFeesInPercent(),
 			}
 			var order model.Order
 			var shouldOpenOrder bool

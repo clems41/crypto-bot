@@ -8,10 +8,12 @@ import (
 /* Should Add Order */
 
 type ShouldAddOrderForm struct {
-	PriceHistory   []model.Price
-	IndexPrice     model.Price
-	PairToTrade    tradingConst.Pair
-	CurrentBalance map[tradingConst.Currency]float64
-	OpenOrders     []model.Order
-	PlatformName   string
+	PriceHistory       []model.Price
+	IndexPrice         model.Price
+	PairToTrade        tradingConst.Pair
+	CurrentBalance     map[tradingConst.Currency]float64
+	OpenOrders         []model.Order
+	PlatformName       string
+	TakerFeesInPercent float64
+	MakerFeesInPercent float64
 }
