@@ -2,6 +2,7 @@ package krakenApi
 
 import (
 	"crypto-bot/external/service/tradingPlatform"
+	"crypto-bot/external/service/tradingPlatform/kraken"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/pkg/utils/envUtils"
@@ -22,11 +23,11 @@ type krakenApi struct {
 }
 
 func New() (api *krakenApi, err error) {
-	apiKey, err := envUtils.GetFromEnvOrError(envKrakenApiKey)
+	apiKey, err := envUtils.GetFromEnvOrError(kraken.EnvKrakenApiKey)
 	if err != nil {
 		return nil, err
 	}
-	apiSecret, err := envUtils.GetFromEnvOrError(envKrakenApiSecret)
+	apiSecret, err := envUtils.GetFromEnvOrError(kraken.EnvKrakenApiSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -43,28 +44,28 @@ func (api *krakenApi) Name() (name string) {
 
 func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	// Send request to kraken but with validate=true (order will not be sent, but fields will be validated)
-	pair, err := GetKrakenPair(order.Pair)
+	pair, err := kraken.GetKrakenPair(order.Pair)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	side, ok := sideConverter[order.Side]
+	side, ok := kraken.SideConverter[order.Side]
 	if !ok {
 		return fmt.Errorf("cannot find side for %s", order.Side)
 	}
-	orderType, ok := typeConverter[order.Type]
+	orderType, ok := kraken.TypeConverter[order.Type]
 	if !ok {
 		return fmt.Errorf("cannot find order type for %s", order.Type)
 	}
-	closeOrderType, ok := typeConverter[order.CloseConditionType]
+	closeOrderType, ok := kraken.TypeConverter[order.CloseConditionType]
 	if !ok {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
 	}
 	orderParameters := map[string]string{
-		priceParameter: fmt.Sprintf("%f", order.Price),
+		kraken.PriceParameter: fmt.Sprintf("%f", order.Price),
 	}
 	if closeOrderType != "" {
-		orderParameters[closeOrderTypeParameter] = closeOrderType
-		orderParameters[closePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
+		orderParameters[kraken.CloseOrderTypeParameter] = closeOrderType
+		orderParameters[kraken.ClosePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
 	}
 	if !ok {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
@@ -81,7 +82,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 	var krakenPairs []string
 	for _, pair := range pairs {
 		var krakenPair string
-		krakenPair, err = GetKrakenPair(pair)
+		krakenPair, err = kraken.GetKrakenPair(pair)
 		if err != nil {
 			return
 		}
@@ -100,7 +101,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 		pairTickerInfo, ok := pairTickerInfoInterface.(krakenClient.PairTickerInfo)
 		if ok && len(pairTickerInfo.Ask) > 0 && len(pairTickerInfo.Bid) > 0 {
 			var pair tradingConst.Pair
-			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
+			pair, err = kraken.GetProjectPair(typeOfResponse.Field(i).Name)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -146,7 +147,7 @@ func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 func (api *krakenApi) GetAllOrders(since time.Time) (orders []model.Order, err error) {
 	// retrieve close orders
 	response, err := api.client.ClosedOrders(map[string]string{
-		startCloseOrderParameter: fmt.Sprintf("%d", since.Unix()),
+		kraken.StartCloseOrderParameter: fmt.Sprintf("%d", since.Unix()),
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -185,7 +186,7 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 		balanceCurrency, ok := balanceCurrencyInterface.(float64)
 		if ok {
 			var currency tradingConst.Currency
-			currency, ok = currencyConverterFromKrakenToProject[typeOfResponse.Field(i).Name]
+			currency, ok = kraken.CurrencyConverterFromKrakenToProject[typeOfResponse.Field(i).Name]
 			if ok {
 				balance.ValueByCurrency[currency] = balanceCurrency
 			}
@@ -196,20 +197,28 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 	return
 }
 
+func (api *krakenApi) TakerFeesInPercent() (fees float64) {
+	return kraken.TakerFees
+}
+
+func (api *krakenApi) MakerFeesInPercent() (fees float64) {
+	return kraken.MakerFees
+}
+
 func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient.Order) (order model.Order, err error) {
-	projectPair, err := GetProjectAssetPair(krakenOrder.Description.AssetPair)
+	projectPair, err := kraken.GetProjectAssetPair(krakenOrder.Description.AssetPair)
 	if err != nil {
 		return order, errors.WithStack(err)
 	}
-	projectSide, err := GetProjectSide(krakenOrder.Description.Type)
+	projectSide, err := kraken.GetProjectSide(krakenOrder.Description.Type)
 	if err != nil {
 		return order, errors.WithStack(err)
 	}
-	projectStatus, err := GetProjectStatus(krakenOrder.Status)
+	projectStatus, err := kraken.GetProjectStatus(krakenOrder.Status)
 	if err != nil {
 		return order, errors.WithStack(err)
 	}
-	projectOrderType, err := GetProjectOrderType(krakenOrder.Description.OrderType)
+	projectOrderType, err := kraken.GetProjectOrderType(krakenOrder.Description.OrderType)
 	if err != nil {
 		return order, errors.WithStack(err)
 	}
@@ -237,11 +246,11 @@ func (api *krakenApi) convertOrderFromPlatformToProject(krakenOrder krakenClient
 
 	// find close condition type
 	var closeOrderType tradingConst.OrderType
-	if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.Limit]) {
+	if strings.Contains(krakenOrder.Description.Close, kraken.CloseTypeDescriptionConverter[tradingConst.Limit]) {
 		closeOrderType = tradingConst.Limit
-	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.TakeProfit]) {
+	} else if strings.Contains(krakenOrder.Description.Close, kraken.CloseTypeDescriptionConverter[tradingConst.TakeProfit]) {
 		closeOrderType = tradingConst.TakeProfit
-	} else if strings.Contains(krakenOrder.Description.Close, closeTypeDescriptionConverter[tradingConst.StopLoss]) {
+	} else if strings.Contains(krakenOrder.Description.Close, kraken.CloseTypeDescriptionConverter[tradingConst.StopLoss]) {
 		closeOrderType = tradingConst.StopLoss
 	} else {
 		closeOrderType = tradingConst.None

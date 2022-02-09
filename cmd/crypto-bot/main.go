@@ -3,7 +3,7 @@ package main
 import (
 	"crypto-bot/external/service/mailService/gmail"
 	"crypto-bot/external/service/tradingPlatform"
-	"crypto-bot/external/service/tradingPlatform/krakenApiMock"
+	"crypto-bot/external/service/tradingPlatform/kraken/krakenApiMock"
 	"crypto-bot/internal/domain/trader"
 	"crypto-bot/internal/domain/tradingStrategy/minOrMaxAlgo"
 	"crypto-bot/internal/repository/postgresqlRepository"

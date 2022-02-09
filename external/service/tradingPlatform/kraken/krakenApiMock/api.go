@@ -2,6 +2,7 @@ package krakenApiMock
 
 import (
 	"crypto-bot/external/service/tradingPlatform"
+	"crypto-bot/external/service/tradingPlatform/kraken"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/pkg/logger"
@@ -25,11 +26,11 @@ type krakenApi struct {
 }
 
 func New() (api *krakenApi, err error) {
-	apiKey, err := envUtils.GetFromEnvOrError(envKrakenApiKey)
+	apiKey, err := envUtils.GetFromEnvOrError(kraken.EnvKrakenApiKey)
 	if err != nil {
 		return nil, err
 	}
-	apiSecret, err := envUtils.GetFromEnvOrError(envKrakenApiSecret)
+	apiSecret, err := envUtils.GetFromEnvOrError(kraken.EnvKrakenApiSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -47,29 +48,29 @@ func (api *krakenApi) Name() (name string) {
 
 func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	// Send request to kraken but with validate=true (order will not be sent, but fields will be validated)
-	pair, err := GetKrakenPair(order.Pair)
+	pair, err := kraken.GetKrakenPair(order.Pair)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	side, ok := sideConverter[order.Side]
+	side, ok := kraken.SideConverter[order.Side]
 	if !ok {
 		return fmt.Errorf("cannot find side for %s", order.Side)
 	}
-	orderType, ok := typeConverter[order.Type]
+	orderType, ok := kraken.TypeConverter[order.Type]
 	if !ok {
 		return fmt.Errorf("cannot find order type for %s", order.Type)
 	}
-	closeOrderType, ok := typeConverter[order.CloseConditionType]
+	closeOrderType, ok := kraken.TypeConverter[order.CloseConditionType]
 	if !ok {
 		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
 	}
 	orderParameters := map[string]string{
-		priceParameter:    fmt.Sprintf("%f", order.Price),
-		validateParameter: "true",
+		kraken.PriceParameter:    fmt.Sprintf("%f", order.Price),
+		kraken.ValidateParameter: "true",
 	}
 	if closeOrderType != "" {
-		orderParameters[closeOrderTypeParameter] = closeOrderType
-		orderParameters[closePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
+		orderParameters[kraken.CloseOrderTypeParameter] = closeOrderType
+		orderParameters[kraken.ClosePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
 	}
 	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
 	if err != nil {
@@ -78,7 +79,7 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	logger.Infof("Order sent to kraken api : %+v", response.Description)
 
 	// fill order as mock
-	fees := order.Amount * takerFees / 100
+	fees := order.Amount * kraken.TakerFees / 100
 	order.ID = uuid.New().String()
 	order.Fees = fees
 	order.Status = tradingConst.Open
@@ -97,7 +98,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 	var krakenPairs []string
 	for _, pair := range pairs {
 		var krakenPair string
-		krakenPair, err = GetKrakenPair(pair)
+		krakenPair, err = kraken.GetKrakenPair(pair)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -116,7 +117,7 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 		pairTickerInfo, ok := pairTickerInfoInterface.(krakenClient.PairTickerInfo)
 		if ok && len(pairTickerInfo.Ask) > 0 && len(pairTickerInfo.Bid) > 0 {
 			var pair tradingConst.Pair
-			pair, err = GetProjectPair(typeOfResponse.Field(i).Name)
+			pair, err = kraken.GetProjectPair(typeOfResponse.Field(i).Name)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -174,6 +175,14 @@ func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
 	balance.UpdatedAt = time.Now()
 	balance.PlatformName = api.Name()
 	return
+}
+
+func (api *krakenApi) TakerFeesInPercent() (fees float64) {
+	return kraken.TakerFees
+}
+
+func (api *krakenApi) MakerFeesInPercent() (fees float64) {
+	return kraken.MakerFees
 }
 
 // updateOrdersBasedOnPrice will update orders like a real platform will do.
@@ -262,11 +271,11 @@ func (api *krakenApi) closeOrder(order *model.Order) (err error) {
 		return fmt.Errorf("cannot find currency got for pair %s ans side %s", order.Pair, order.Side)
 	}
 	if order.Side == tradingConst.Buy {
-		order.Volume *= 1 - takerFees/100
+		order.Volume *= 1 - kraken.TakerFees/100
 		api.balanceByCurrencyMock[currencyNeeded] -= order.Amount
 		api.balanceByCurrencyMock[currencyGot] += order.Volume
 	} else {
-		order.Amount *= 1 - takerFees/100
+		order.Amount *= 1 - kraken.TakerFees/100
 		api.balanceByCurrencyMock[currencyNeeded] -= order.Volume
 		api.balanceByCurrencyMock[currencyGot] += order.Amount
 	}

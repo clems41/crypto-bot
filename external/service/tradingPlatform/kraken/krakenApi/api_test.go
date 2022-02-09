@@ -1,6 +1,7 @@
 package krakenApi
 
 import (
+	"crypto-bot/external/service/tradingPlatform/kraken"
 	"crypto-bot/internal/constant/tradingConst"
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"
@@ -73,15 +74,15 @@ func TestKrakenApi_convertOrderFromPlatformToProject(t *testing.T) {
 	status := tradingConst.Close
 	krakenOrder := krakenClient.Order{
 		TransactionID: uuid.New().String(),
-		Status:        statusConverter[status],
+		Status:        kraken.StatusConverter[status],
 		OpenTime:      float64(openTime.Unix()),
 		CloseTime:     float64(closeTime.Unix()),
 		Description: krakenClient.OrderDescription{
 			AssetPair: "ETHEUR",
-			Close:     fmt.Sprintf("close position @ %s %f", closeTypeDescriptionConverter[closeCondition], closePrice),
+			Close:     fmt.Sprintf("close position @ %s %f", kraken.CloseTypeDescriptionConverter[closeCondition], closePrice),
 			Leverage:  "0",
-			OrderType: typeConverter[orderType],
-			Type:      sideConverter[side],
+			OrderType: kraken.TypeConverter[orderType],
+			Type:      kraken.SideConverter[side],
 		},
 		Volume: fmt.Sprintf("%f", volume),
 		Fee:    fees,

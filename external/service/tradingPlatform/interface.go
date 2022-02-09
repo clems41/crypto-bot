@@ -13,4 +13,6 @@ type Api interface {
 	GetOpenOrders() (orders []model.Order, err error)
 	GetAllOrders(since time.Time) (orders []model.Order, err error)
 	RefreshBalance(balance *model.Balance) (err error)
+	TakerFeesInPercent() (fees float64)
+	MakerFeesInPercent() (fees float64)
 }

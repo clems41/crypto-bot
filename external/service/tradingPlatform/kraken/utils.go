@@ -1,4 +1,4 @@
-package krakenApiMock
+package kraken
 
 import (
 	"crypto-bot/internal/constant/tradingConst"
@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	currencyConverterFromKrakenToProject = map[string]tradingConst.Currency{
+	CurrencyConverterFromKrakenToProject = map[string]tradingConst.Currency{
 		"ZEUR": tradingConst.Euro,
 		"DASH": tradingConst.Dash,
 		"XXBT": tradingConst.Bitcoin,
@@ -17,7 +17,7 @@ var (
 )
 
 var (
-	pairConverter = map[tradingConst.Pair]string{
+	PairConverter = map[tradingConst.Pair]string{
 		tradingConst.BitcoinEuro:     krakenapi.XXBTZEUR,
 		tradingConst.DashEuro:        krakenapi.DASHEUR,
 		tradingConst.BitcoinUSDollar: krakenapi.XXBTZUSD,
@@ -28,7 +28,7 @@ var (
 )
 
 var (
-	assetPairConverter = map[tradingConst.Pair]string{
+	AssetPairConverter = map[tradingConst.Pair]string{
 		tradingConst.BitcoinEuro:  "XBTEUR",
 		tradingConst.DashEuro:     "DASHEUR",
 		tradingConst.EthereumEuro: "ETHEUR",
@@ -37,14 +37,14 @@ var (
 )
 
 var (
-	sideConverter = map[tradingConst.OrderSide]string{
+	SideConverter = map[tradingConst.OrderSide]string{
 		tradingConst.Buy:  "buy",
 		tradingConst.Sell: "sell",
 	}
 )
 
 var (
-	typeConverter = map[tradingConst.OrderType]string{
+	TypeConverter = map[tradingConst.OrderType]string{
 		tradingConst.Market:     krakenapi.OTMarket,
 		tradingConst.Limit:      krakenapi.OTLimit,
 		tradingConst.StopLoss:   krakenapi.OTStopLoss,
@@ -54,7 +54,7 @@ var (
 )
 
 var (
-	closeTypeDescriptionConverter = map[tradingConst.OrderType]string{
+	CloseTypeDescriptionConverter = map[tradingConst.OrderType]string{
 		tradingConst.Limit:      "limit",
 		tradingConst.StopLoss:   "stop loss",
 		tradingConst.TakeProfit: "take profit",
@@ -62,7 +62,7 @@ var (
 )
 
 var (
-	statusConverter = map[tradingConst.OrderStatus]string{
+	StatusConverter = map[tradingConst.OrderStatus]string{
 		tradingConst.Open:   "open",
 		tradingConst.Close:  "closed",
 		tradingConst.Cancel: "canceled",
@@ -70,7 +70,7 @@ var (
 )
 
 func GetKrakenPair(projectPair tradingConst.Pair) (krakenPair string, err error) {
-	krakenPair, ok := pairConverter[projectPair]
+	krakenPair, ok := PairConverter[projectPair]
 	if !ok {
 		return krakenPair, fmt.Errorf("cannot find kraken pair for %s", projectPair)
 	}
@@ -78,7 +78,7 @@ func GetKrakenPair(projectPair tradingConst.Pair) (krakenPair string, err error)
 }
 
 func GetProjectPair(krakenPair string) (projectPair tradingConst.Pair, err error) {
-	for project, kraken := range pairConverter {
+	for project, kraken := range PairConverter {
 		if kraken == krakenPair {
 			projectPair = project
 			return
@@ -88,7 +88,7 @@ func GetProjectPair(krakenPair string) (projectPair tradingConst.Pair, err error
 }
 
 func GetProjectAssetPair(krakenPair string) (projectPair tradingConst.Pair, err error) {
-	for project, kraken := range assetPairConverter {
+	for project, kraken := range AssetPairConverter {
 		if kraken == krakenPair {
 			projectPair = project
 			return
@@ -98,7 +98,7 @@ func GetProjectAssetPair(krakenPair string) (projectPair tradingConst.Pair, err 
 }
 
 func GetProjectSide(krakenSide string) (projectSide tradingConst.OrderSide, err error) {
-	for project, kraken := range sideConverter {
+	for project, kraken := range SideConverter {
 		if kraken == krakenSide {
 			projectSide = project
 			return
@@ -108,7 +108,7 @@ func GetProjectSide(krakenSide string) (projectSide tradingConst.OrderSide, err 
 }
 
 func GetProjectOrderType(krakenType string) (projectType tradingConst.OrderType, err error) {
-	for project, kraken := range typeConverter {
+	for project, kraken := range TypeConverter {
 		if kraken == krakenType {
 			projectType = project
 			return
@@ -118,7 +118,7 @@ func GetProjectOrderType(krakenType string) (projectType tradingConst.OrderType,
 }
 
 func GetProjectStatus(krakenStatus string) (projectStatus tradingConst.OrderStatus, err error) {
-	for project, kraken := range statusConverter {
+	for project, kraken := range StatusConverter {
 		if kraken == krakenStatus {
 			projectStatus = project
 			return
