@@ -154,3 +154,8 @@ func (r *repo) GetOrderHistory(form repository.GetOrderHistoryForm) (orders []mo
 	// TODO
 	return
 }
+
+func (r *repo) StoreConfig(configModel *model.Config) (err error) {
+	// TODO
+	return
+}

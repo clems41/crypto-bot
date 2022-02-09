@@ -172,3 +172,11 @@ func (algo *algorithm) DelayBetweenEachRun() (delay time.Duration) {
 func (algo *algorithm) PairsToTradeByPlatform() (pairsByPlatform map[string][]tradingConst.Pair) {
 	return algo.cfg.InitialPairsToTradeByPlatform
 }
+
+func (algo *algorithm) Name() (name string) {
+	return tradingConst.MinOrMaxAlgoName
+}
+
+func (algo *algorithm) ConfigParameters() (parameters string) {
+	return fmt.Sprintf("%+v", *algo.cfg)
+}

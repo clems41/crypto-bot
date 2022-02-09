@@ -18,4 +18,8 @@ type Algo interface {
 	DelayBetweenEachRun() (delay time.Duration)
 	// PairsToTradeByPlatform return pairs that should be trades depending on platform
 	PairsToTradeByPlatform() (pairsByPlatform map[string][]tradingConst.Pair)
+	// Name return algorithm name
+	Name() (name string)
+	// ConfigParameters return config parameters and value
+	ConfigParameters() (parameters string)
 }

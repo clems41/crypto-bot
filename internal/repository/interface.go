@@ -12,8 +12,12 @@ type Repository interface {
 
 	StoreBalance(balance *model.Balance) (err error)
 
-	/* order */
+	/* Order */
 
 	StoreOrder(order *model.Order) (err error)
 	GetOrderHistory(form GetOrderHistoryForm) (orders []model.Order, err error)
+
+	/* Config */
+
+	StoreConfig(config *model.Config) (err error)
 }

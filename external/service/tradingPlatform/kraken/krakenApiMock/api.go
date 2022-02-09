@@ -104,7 +104,15 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 		}
 		krakenPairs = append(krakenPairs, krakenPair)
 	}
-	response, err := api.client.Ticker(krakenPairs...)
+	// api could not respond, try three times before returning errors
+	nbRetries := 3
+	var count int
+	var response *krakenClient.TickerResponse
+	response, err = api.client.Ticker(krakenPairs...)
+	for err != nil && count < nbRetries {
+		time.Sleep(10 * time.Second)
+		response, err = api.client.Ticker(krakenPairs...)
+	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

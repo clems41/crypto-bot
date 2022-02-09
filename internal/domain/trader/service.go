@@ -89,6 +89,16 @@ func (svc *service) Start() (err error) {
 		}
 	}
 
+	// store config
+	config := model.Config{
+		Name:       svc.algo.Name(),
+		Parameters: svc.algo.ConfigParameters(),
+	}
+	err = svc.repo.StoreConfig(&config)
+	if err != nil {
+		return
+	}
+
 	// Run algorithm each X ms
 	for range time.Tick(svc.algo.DelayBetweenEachRun()) { // Loop
 		select {
