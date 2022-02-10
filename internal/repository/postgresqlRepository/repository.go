@@ -50,7 +50,7 @@ func New(DB *gorm.DB) (r *repo, err error) {
 }
 
 func (r *repo) Migrate() (err error) {
-	err = r.db.AutoMigrate(&price{}, &balance{}, &order{})
+	err = r.db.AutoMigrate(&price{}, &balance{}, &order{}, &config{})
 	if err != nil {
 		return
 	}
