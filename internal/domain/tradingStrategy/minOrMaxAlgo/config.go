@@ -18,9 +18,9 @@ const (
 )
 
 const (
-	defaultNumberOfPreviousPricesToCompare        = "180" // 180 * 10s --> 30min
-	defaultPercentPriceBelowToBuy                 = "0.05"
-	defaultMinimumResultInPercentBeforeCloseOrder = "0.1"
+	defaultNumberOfPreviousPricesToCompare        = "360" // 360 * 10s --> 1h
+	defaultPercentPriceBelowToBuy                 = "0.1"
+	defaultMinimumResultInPercentBeforeCloseOrder = "0.2"
 	defaultMaxOpenedOrdersByPair                  = "1"
 	defaultMinimumAmount                          = "10"
 	defaultDelayBetweenEachRunInSeconds           = "10"
