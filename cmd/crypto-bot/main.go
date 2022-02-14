@@ -3,7 +3,7 @@ package main
 import (
 	"crypto-bot/external/service/mailService/gmail"
 	"crypto-bot/external/service/tradingPlatform"
-	"crypto-bot/external/service/tradingPlatform/kraken/krakenApi"
+	"crypto-bot/external/service/tradingPlatform/kraken/krakenApiMock"
 	"crypto-bot/internal/domain/trader"
 	"crypto-bot/internal/domain/tradingStrategy/minOrMaxAlgo"
 	"crypto-bot/internal/repository/postgresqlRepository"
@@ -32,20 +32,16 @@ func main() {
 	}
 
 	/* Trading platforms */
-	/*	krakenMock, err := krakenApiMock.New()
-		if err != nil {
-			logger.Fatal(err)
-		}*/
-	kraken, err := krakenApi.New()
+	krakenMock, err := krakenApiMock.New()
 	if err != nil {
 		logger.Fatal(err)
 	}
-
-	/* Repository */
-	/*	googleSheetRepo, err := googleSheetRepository.New(context.Background())
+	/*	kraken, err := krakenApi.New()
 		if err != nil {
 			logger.Fatal(err)
 		}*/
+
+	/* Repository */
 	postgresqlRepo, err := postgresqlRepository.New(DB)
 	if err != nil {
 		logger.Fatal(err)
@@ -60,8 +56,8 @@ func main() {
 	// Run trading algorithm
 	tradingService, err := trader.NewService(
 		[]tradingPlatform.Api{
-			kraken,
-			//krakenMock,
+			//kraken,
+			krakenMock,
 		},
 		postgresqlRepo,
 		algo,

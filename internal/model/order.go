@@ -15,9 +15,9 @@ type Order struct {
 	CloseTime           time.Time
 	Pair                tradingConst.Pair        `validate:"required"`
 	Side                tradingConst.OrderSide   `validate:"oneof=buy sell"`                           // buy or sell
-	Volume              float64                  `validate:"gte=0"`                                    // quantity of currency to buy/sell, can be 0, will be filled by trading platform
+	Volume              float64                  `validate:"gt=0"`                                     // quantity of currency to buy/sell, can be 0, will be filled by trading platform
 	Type                tradingConst.OrderType   `validate:"oneof=market limit stop-loss take-profit"` // market, limit, stop-loss, take-profit
-	Price               float64                  `validate:"gte=0"`                                    // price of traded pair
+	Price               float64                  `validate:"gt=0"`                                     // price of traded pair
 	Amount              float64                  `validate:"gte=0"`                                    // amount of initial currency to spend to buy another one
 	Leverage            int                      `validate:"gte=0"`                                    // effet de levier x1, x2 ,x3, etc...
 	CloseConditionType  tradingConst.OrderType   `validate:"oneof=none limit stop-loss take-profit"`   // condition to create an opposite order when the first one is completed : limit, stop-loss, take-profit
@@ -37,6 +37,57 @@ func (order Order) Validate() (err error) {
 	// check status
 	if order.Status != tradingConst.Cancel && order.Price == 0 {
 		return fmt.Errorf("price should not be 0 if status is not cancel")
+	}
+
+	return
+}
+
+func (order Order) ValidateBeforeAdding() (err error) {
+	// check pair
+	if order.Pair == "" {
+		return fmt.Errorf("pair should not be empty")
+	}
+
+	// check volume
+	if order.Volume == 0 {
+		return fmt.Errorf("volume should not be empty")
+	}
+
+	// check side
+	if order.Side != tradingConst.Buy && order.Side != tradingConst.Sell {
+		return fmt.Errorf("order side should be one of %v but not '%s'", []tradingConst.OrderSide{
+			tradingConst.Buy,
+			tradingConst.Sell,
+		}, order.Side)
+	}
+
+	// check type
+	if order.Type != tradingConst.None && order.Type != tradingConst.Market && order.Type != tradingConst.Limit &&
+		order.Type != tradingConst.TakeProfit && order.Type != tradingConst.StopLoss {
+		return fmt.Errorf("type should be one of %v but it is '%s'", []tradingConst.OrderType{
+			tradingConst.None,
+			tradingConst.Market,
+			tradingConst.Limit,
+			tradingConst.TakeProfit,
+			tradingConst.StopLoss,
+		}, order.Type)
+	}
+
+	// check close condition type
+	if order.CloseConditionType != tradingConst.None && order.CloseConditionType != tradingConst.Market && order.CloseConditionType != tradingConst.Limit &&
+		order.CloseConditionType != tradingConst.TakeProfit && order.CloseConditionType != tradingConst.StopLoss {
+		return fmt.Errorf("close condition type should be one of %v but it is '%s'", []tradingConst.OrderType{
+			tradingConst.None,
+			tradingConst.Market,
+			tradingConst.Limit,
+			tradingConst.TakeProfit,
+			tradingConst.StopLoss,
+		}, order.CloseConditionType)
+	}
+
+	// check close condition price
+	if order.CloseConditionType != "" && order.CloseConditionPrice == 0 {
+		return fmt.Errorf("close condition price should not be empty with close condition %s", order.CloseConditionType)
 	}
 
 	// check pair price decimals

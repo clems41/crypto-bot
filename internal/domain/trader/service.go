@@ -244,7 +244,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			// open order if conditions are ok
 			if shouldOpenOrder {
 				// check order before
-				err = order.Validate()
+				err = order.ValidateBeforeAdding()
 				if err != nil {
 					return
 				}
@@ -254,6 +254,7 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 				if err != nil {
 					return
 				}
+
 				break // open order only once at run, avoid updating tradeInfo after each new order
 			}
 		}
@@ -270,6 +271,12 @@ func (svc *service) updateOpenedOrders(platform tradingPlatform.Api) (err error)
 		return
 	}
 	for _, order := range orders {
+		// check order before storing it
+		err = order.Validate()
+		if err != nil {
+			return
+		}
+
 		err = svc.repo.StoreOrder(&order)
 		if err != nil {
 			return
