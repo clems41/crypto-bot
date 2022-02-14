@@ -159,7 +159,11 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	}
 
 	if share != nbOpenOrderThatAlreadyUsedCurrency {
-		amount = balance / float64(share-nbOpenOrderThatAlreadyUsedCurrency)
+		amount, err = tradingUtils.RemoveAmountDecimalWithFloorRounding(balance/float64(share-nbOpenOrderThatAlreadyUsedCurrency),
+			currencyNeededToBuy)
+		if err != nil {
+			return amount, errors.WithStack(err)
+		}
 	}
 
 	return

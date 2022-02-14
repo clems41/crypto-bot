@@ -132,6 +132,7 @@ func (svc *service) Stop() {
 		// Get all orders
 		orders, err := platform.GetAllOrders(svc.startTime)
 		if err != nil {
+			logger.Error(err)
 			return
 		}
 		for _, order := range orders {
@@ -218,7 +219,8 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			}
 
 			// fill open form to know if new order should be open
-			indexPrice, ok := svc.indexPriceByPlatformByPair[platformName][pair]
+			var indexPrice model.Price
+			indexPrice, ok = svc.indexPriceByPlatformByPair[platformName][pair]
 			if !ok {
 				return fmt.Errorf("cannot get index price for platform %s and pair %s", platformName, pair)
 			}
@@ -238,8 +240,16 @@ func (svc *service) applyTradingAlgorithm() (err error) {
 			if err != nil {
 				return
 			}
+
 			// open order if conditions are ok
 			if shouldOpenOrder {
+				// check order before
+				err = order.Validate()
+				if err != nil {
+					return
+				}
+
+				// add new order
 				err = svc.addOrder(platform, &order)
 				if err != nil {
 					return

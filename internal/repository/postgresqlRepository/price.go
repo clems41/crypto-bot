@@ -42,8 +42,8 @@ func (r *repo) StorePrice(priceModel *model.Price) (err error) {
 func (r *repo) GetPriceHistory(form repository.GetPriceHistoryForm) (prices []model.Price, err error) {
 	var pricesRepo []price
 	err = r.db.
-		Find(&pricesRepo, "execution_id = ? AND platform_name = ? AND pair = ? AND created_at >= ?",
-			r.executionID, form.PlatformName, form.Pair, form.SinceTime).
+		Find(&pricesRepo, "platform_name = ? AND pair = ? AND created_at >= ?",
+			form.PlatformName, form.Pair, form.SinceTime).
 		Error
 	if err != nil {
 		return nil, errors.WithStack(err)

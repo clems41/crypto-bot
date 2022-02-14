@@ -73,7 +73,7 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 	}
 	_, err = api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.WithStack(fmt.Errorf("got error when adding order %+v : %s", order, err.Error()))
 	}
 	return
 }
