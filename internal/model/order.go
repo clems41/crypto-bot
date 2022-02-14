@@ -3,6 +3,7 @@ package model
 import (
 	"crypto-bot/internal/constant/timeConst"
 	"crypto-bot/internal/constant/tradingConst"
+	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"time"
@@ -36,8 +37,30 @@ func (order Order) Validate() (err error) {
 	// check status
 	if order.Status != tradingConst.Cancel && order.Price == 0 {
 		return fmt.Errorf("price should not be 0 if status is not cancel")
-
 	}
+
+	// check pair price decimals
+	expectedPrice, err := tradingUtils.RemovePriceDecimal(order.Price, order.Pair)
+	if err != nil {
+		return
+	}
+	if expectedPrice != order.Price {
+		return fmt.Errorf("price should be rounded to %f but it is %f", expectedPrice, order.Price)
+	}
+
+	// check amount decimals
+	currency, ok := tradingUtils.CurrencyNeededToTradePair(order.Pair, tradingConst.Buy)
+	if !ok {
+		return fmt.Errorf("currency needed cannot be found for pair %s", order.Pair)
+	}
+	expectedAmount, err := tradingUtils.RemoveAmountDecimalWithFloorRounding(order.Amount, currency)
+	if err != nil {
+		return
+	}
+	if expectedAmount != order.Amount {
+		return fmt.Errorf("amount should be rounded to %f but it is %f", expectedAmount, order.Amount)
+	}
+
 	return
 }
 
