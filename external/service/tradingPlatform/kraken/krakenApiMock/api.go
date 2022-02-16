@@ -6,6 +6,7 @@ import (
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
 	"crypto-bot/pkg/logger"
+	"crypto-bot/pkg/retry"
 	"crypto-bot/pkg/utils/envUtils"
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
@@ -72,7 +73,14 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 		orderParameters[kraken.CloseOrderTypeParameter] = closeOrderType
 		orderParameters[kraken.ClosePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
 	}
-	response, err := api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
+
+	// try to add order several times
+	var response *krakenClient.AddOrderResponse
+	funcToRetry := func() error {
+		response, err = api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
+		return err
+	}
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -105,20 +113,13 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 		krakenPairs = append(krakenPairs, krakenPair)
 	}
 
-	// api could not respond, try three times before returning errors
-	var count int
+	// api could not respond, try several times before returning errors
 	var response *krakenClient.TickerResponse
-	response, err = api.client.Ticker(krakenPairs...)
-	for err != nil && count < kraken.NbRequestRetries {
-		count++
-		logger.Errorf("Got error from Kraken api : %s, retry %d/%d after %0.0f seconds", err.Error(), count,
-			kraken.NbRequestRetries, kraken.DelayBetweenRetries.Seconds())
-		time.Sleep(kraken.DelayBetweenRetries)
+	funcToRetry := func() error {
 		response, err = api.client.Ticker(krakenPairs...)
+		return err
 	}
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 
 	// search required value from response
 	value := reflect.ValueOf(response).Elem()

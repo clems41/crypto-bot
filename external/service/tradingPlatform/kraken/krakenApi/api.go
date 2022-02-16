@@ -5,7 +5,7 @@ import (
 	"crypto-bot/external/service/tradingPlatform/kraken"
 	"crypto-bot/internal/constant/tradingConst"
 	"crypto-bot/internal/model"
-	"crypto-bot/pkg/logger"
+	"crypto-bot/pkg/retry"
 	"crypto-bot/pkg/utils/envUtils"
 	"fmt"
 	krakenClient "github.com/beldur/kraken-go-api-client"
@@ -68,10 +68,13 @@ func (api *krakenApi) AddOrder(order model.Order) (err error) {
 		orderParameters[kraken.CloseOrderTypeParameter] = closeOrderType
 		orderParameters[kraken.ClosePriceParameter] = fmt.Sprintf("%f", order.CloseConditionPrice)
 	}
-	if !ok {
-		return fmt.Errorf("cannot find close order type for %s", order.CloseConditionType)
+
+	// try to add order several times
+	funcToRetry := func() error {
+		_, err = api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
+		return err
 	}
-	_, err = api.client.AddOrder(pair, side, orderType, fmt.Sprintf("%f", order.Volume), orderParameters)
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("got error when adding order %+v : %s", order, err.Error()))
 	}
@@ -90,20 +93,13 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 		krakenPairs = append(krakenPairs, krakenPair)
 	}
 
-	// api could not respond, try three times before returning errors
-	var count int
+	// api could not respond, try several times before returning errors
 	var response *krakenClient.TickerResponse
-	response, err = api.client.Ticker(krakenPairs...)
-	for err != nil && count < kraken.NbRequestRetries {
-		count++
-		logger.Errorf("Got error from Kraken api : %s, retry %d/%d after %0.0f seconds", err.Error(), count,
-			kraken.NbRequestRetries, kraken.DelayBetweenRetries.Seconds())
-		time.Sleep(kraken.DelayBetweenRetries)
+	funcToRetry := func() error {
 		response, err = api.client.Ticker(krakenPairs...)
+		return err
 	}
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 
 	// search required value from response
 	value := reflect.ValueOf(response).Elem()
@@ -140,10 +136,17 @@ func (api *krakenApi) GetIndexPrices(pairs ...tradingConst.Pair) (prices []model
 }
 
 func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
-	response, err := api.client.OpenOrders(nil)
+	// try several times
+	var response *krakenClient.OpenOrdersResponse
+	funcToRetry := func() error {
+		response, err = api.client.OpenOrders(nil)
+		return err
+	}
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	for orderID, krakenOrder := range response.Open {
 		var order model.Order
 		order, err = api.convertOrderFromPlatformToProject(krakenOrder)
@@ -157,13 +160,20 @@ func (api *krakenApi) GetOpenOrders() (orders []model.Order, err error) {
 }
 
 func (api *krakenApi) GetAllOrders(since time.Time) (orders []model.Order, err error) {
-	// retrieve close orders
-	response, err := api.client.ClosedOrders(map[string]string{
-		kraken.StartCloseOrderParameter: fmt.Sprintf("%d", since.Unix()),
-	})
+	// try several times
+	var response *krakenClient.ClosedOrdersResponse
+	funcToRetry := func() error {
+		response, err = api.client.ClosedOrders(map[string]string{
+			kraken.StartCloseOrderParameter: fmt.Sprintf("%d", since.Unix()),
+		})
+		return err
+	}
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	// retrieve close orders
 	for orderID, krakenOrder := range response.Closed {
 		var order model.Order
 		order, err = api.convertOrderFromPlatformToProject(krakenOrder)
@@ -184,8 +194,13 @@ func (api *krakenApi) GetAllOrders(since time.Time) (orders []model.Order, err e
 }
 
 func (api *krakenApi) RefreshBalance(balance *model.Balance) (err error) {
-	// get response form kraken api
-	response, err := api.client.Balance()
+	// try several times
+	var response *krakenClient.BalanceResponse
+	funcToRetry := func() error {
+		response, err = api.client.Balance()
+		return err
+	}
+	err = retry.DoWithRetry(funcToRetry, kraken.NbRequestRetries, kraken.DelayBetweenRetries)
 	if err != nil {
 		return errors.WithStack(err)
 	}
