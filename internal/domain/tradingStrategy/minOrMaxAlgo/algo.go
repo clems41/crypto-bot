@@ -138,23 +138,28 @@ func (algo *algorithm) getAmountToBuy(form tradingStrategy.ShouldAddOrderForm) (
 	share := nbPairUsingCurrency * algo.MaxOpenedOrdersByPair()
 
 	// count number of current open orders that already used currency balance
-	var nbOpenOrderForPair, nbOpenOrderThatAlreadyUsedCurrency int
+	// nbOpenOrderThatAlreadyUsedCurrency
+	nbOpenOrderByPair := make(map[tradingConst.Pair]int)
+	var nbOpenOrderThatAlreadyUsedCurrency int
 	for _, order := range form.OpenOrders {
-		if order.Pair == form.PairToTrade && order.Status == tradingConst.Open {
-			nbOpenOrderForPair++
+		if order.Status == tradingConst.Open {
+			nbOpenOrderByPair[order.Pair]++
 		}
 		var currency tradingConst.Currency
 		currency, ok = tradingUtils.CurrencyNeededToTradePair(order.Pair, tradingConst.Buy)
 		if !ok {
 			return amount, fmt.Errorf("cannot find currency to buy %s", form.PairToTrade)
 		}
-		if currency == currencyNeededToBuy && order.Side == tradingConst.Sell {
+		// In some cases, even if MaxOpenedOrdersByPair is set to 1, platform will open 2 orders for the same one because all volume requested cannot be bought in one order.
+		// That's why, we don't want to take into account one split order as 2 or more different order --> nbOpenOrderByPair[order.Pair] <= algo.MaxOpenedOrdersByPair()
+		if currency == currencyNeededToBuy && order.Side == tradingConst.Sell &&
+			nbOpenOrderByPair[order.Pair] <= algo.MaxOpenedOrdersByPair() {
 			nbOpenOrderThatAlreadyUsedCurrency++
 		}
 	}
 
 	// order should not be open if MaxOpenedOrdersByPair has been reached
-	if nbOpenOrderForPair >= algo.MaxOpenedOrdersByPair() {
+	if nbOpenOrderByPair[form.PairToTrade] >= algo.MaxOpenedOrdersByPair() {
 		return
 	}
 
