@@ -8,6 +8,7 @@ import (
 	"crypto-bot/internal/domain/tradingStrategy"
 	"crypto-bot/internal/model"
 	"crypto-bot/internal/repository"
+	"crypto-bot/pkg/customError"
 	"crypto-bot/pkg/logger"
 	"crypto-bot/pkg/utils/tradingUtils"
 	"fmt"
@@ -108,6 +109,7 @@ func (svc *service) Start() (err error) {
 		default:
 			err = svc.applyTradingAlgorithm()
 			if err != nil {
+				// if error send email with it
 				sendRequest := mailService.SendRequest{
 					Subject: "Error occurs with Crypto-bot",
 					Body:    err.Error(),
@@ -116,7 +118,14 @@ func (svc *service) Start() (err error) {
 				if errMail != nil {
 					logger.Error(errMail)
 				}
-				return
+
+				// log error with stack
+				errWithStack, ok := err.(customError.StackTracer)
+				if ok {
+					logger.Error(errWithStack)
+				} else {
+					logger.Error(err)
+				}
 			}
 		}
 	}
