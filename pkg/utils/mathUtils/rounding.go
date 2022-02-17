@@ -19,7 +19,7 @@ func RoundingAfterNDecimal(value float64, nbDecimal int) (result float64, err er
 // Ex : 1.656 and nb = 2 will return 1.65
 func FloorRoundingAfterNDecimal(value float64, nbDecimal int) (result float64, err error) {
 	decimalCoefficient := math.Pow(10, float64(nbDecimal))
-	valueStrWithoutDecimal := fmt.Sprint(math.Floor(value*decimalCoefficient) / decimalCoefficient)
+	valueStrWithoutDecimal := fmt.Sprint(math.Floor(float64(float32(value*decimalCoefficient))) / decimalCoefficient)
 	result, err = strconv.ParseFloat(valueStrWithoutDecimal, 64)
 	return
 }

@@ -27,6 +27,18 @@ func TestRoundingAfterNDecimal(t *testing.T) {
 			Value:      10,
 			NbDecimals: 4,
 		}: 10,
+		{
+			Value:      38.419000,
+			NbDecimals: 2,
+		}: 38.42,
+		{
+			Value:      38.412000,
+			NbDecimals: 2,
+		}: 38.41,
+		{
+			Value:      38.4100000,
+			NbDecimals: 2,
+		}: 38.41,
 	}
 	for args, expected := range tests {
 		actual, err := RoundingAfterNDecimal(args.Value, args.NbDecimals)
@@ -57,6 +69,18 @@ func TestFloorRoundingAfterNDecimal(t *testing.T) {
 			Value:      10.568,
 			NbDecimals: 4,
 		}: 10.568,
+		{
+			Value:      38.419000,
+			NbDecimals: 2,
+		}: 38.41,
+		{
+			Value:      38.412000,
+			NbDecimals: 2,
+		}: 38.41,
+		{
+			Value:      38.4100000,
+			NbDecimals: 2,
+		}: 38.41,
 		{
 			Value:      10,
 			NbDecimals: 4,
@@ -95,6 +119,18 @@ func TestCeilRoundingAfterNDecimal(t *testing.T) {
 			Value:      10,
 			NbDecimals: 4,
 		}: 10,
+		{
+			Value:      38.419000,
+			NbDecimals: 2,
+		}: 38.42,
+		{
+			Value:      38.412000,
+			NbDecimals: 2,
+		}: 38.42,
+		{
+			Value:      38.4100000,
+			NbDecimals: 2,
+		}: 38.41,
 	}
 	for args, expected := range tests {
 		actual, err := CeilRoundingAfterNDecimal(args.Value, args.NbDecimals)
